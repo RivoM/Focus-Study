@@ -1470,8 +1470,9 @@ function embedUrl(service, raw){
     return null;
   }
   if(service === "apple"){
-    m = url.match(/music\.apple\.com\/(.+)$/);
-    return m ? "https://embed.music.apple.com/"+m[1] : null;
+    if(/music\.apple\.com\/[a-z]{2}\/library\//i.test(url)) return null;   // private library links can't be embedded
+    m = url.match(/(?:embed\.)?music\.apple\.com\/([^?#\s]+)/);
+    return m ? "https://embed.music.apple.com/"+m[1].replace(/\/+$/,"") : null;
   }
   return null;
 }
@@ -1876,11 +1877,13 @@ function viewMusic(){
     return '<button class="pill" data-act="svc" data-k="'+k+'" aria-pressed="'+(svc===k)+'">'+SERVICES[k].label+'</button>';
   }).join("");
   const player = emb
-    ? '<div class="frame" id="frameWrap"><iframe id="musicFrame" src="'+esc(emb)+'" height="'+(svc==="youtube"?200:(svc==="apple"?175:152))+
-      '" allow="autoplay; encrypted-media; clipboard-write; picture-in-picture" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen title="'+SERVICES[svc].label+' player"></iframe></div>'+
+    ? '<div class="frame" id="frameWrap"><iframe id="musicFrame" src="'+esc(emb)+'" height="'+(svc==="youtube"?200:(svc==="apple"?(/\/(playlist|album)\//.test(emb)?450:175):152))+
+      '" allow="autoplay *; encrypted-media *; clipboard-write; picture-in-picture" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen title="'+SERVICES[svc].label+' player"></iframe></div>'+
       '<div id="frameFallback" hidden><div class="box"><p style="margin:0 0 9px;font-size:13px">Embedded players are blocked in this preview frame.</p>'+
       '<button class="solid" data-act="openMusic" style="width:100%">Open in '+SERVICES[svc].label+' '+ic("out",14)+'</button></div></div>'
-    : (link ? '<p class="note">That link doesn\'t look like a '+SERVICES[svc].label+' playlist, album or track. Expected: '+esc(SERVICES[svc].hint)+'</p>' : "");
+    : (link ? (svc==="apple" && /\/library\//i.test(link)
+        ? '<p class="note">That is a private <b>library</b> link, which only works for you and can\'t be embedded. In Apple Music open the playlist, tap the ••• menu, choose <b>Share</b> then <b>Copy Link</b>. The shared link looks like music.apple.com/za/playlist/name/pl.… (the playlist must be shared or shown on your profile).</p>'
+        : '<p class="note">That link doesn\'t look like a '+SERVICES[svc].label+' playlist, album or track. Expected: '+esc(SERVICES[svc].hint)+'</p>') : "");
 
   return '<div class="sect"><p class="lbl">Service</p><div class="grid3">'+picker+'</div></div>'+
     '<div class="sect"><p class="lbl">'+SERVICES[svc].label+' link</p><div class="box">'+
