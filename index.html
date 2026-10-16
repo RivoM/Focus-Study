@@ -1,0 +1,2773 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><title>Focus Study (Copy)</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Quicksand:wght@600;700&family=Archivo+Narrow:wght@600;700&family=Lexend:wght@400;500;600;700;800&family=Atkinson+Hyperlegible:wght@400;700&family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:wght@500;600;700;800&family=Lora:wght@500;600;700&display=swap">
+<style>
+/* Layout: single full-height workspace. Centred timer column, two icon docks pinned
+   bottom-left / bottom-right, one slide-in panel from the left for everything else.
+   Palette is theme-driven: every colour below reads from a token that JS rewrites
+   when the user picks a theme, so the app owns its own light/dark world. */
+:root{
+  --bg:#4527a0; --solid:#5b2a9e; --text:#fff; --sub:rgba(255,255,255,.62);
+  --card:rgba(255,255,255,.12); --border:rgba(255,255,255,.2);
+  --accent:#6d28d9; --onAccent:#fff;
+  --panel:rgba(12,12,16,.9); --panelText:#fff;
+  --ui:'Figtree',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --timerFont:var(--ui);
+  --good:#34d399; --warn:#fbbf24; --bad:#fb7185;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:var(--ui);background:var(--bg);color:var(--text);
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+:focus-visible{outline:2px solid var(--text);outline-offset:2px;border-radius:8px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+#app{position:relative;height:100%;width:100%;display:flex;flex-direction:column;
+  background:var(--bg);transition:background .6s ease;overflow:hidden}
+#app.anim{background-size:300% 300%;animation:drift 18s ease infinite}
+@keyframes drift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+/* ---------- top bar ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:calc(14px + env(safe-area-inset-top,0px)) 20px 0;z-index:5}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:-.02em;font-size:17px}
+.brand span.light{font-weight:400;opacity:.6}
+.quote{font-size:13px;line-height:1.4;opacity:.75;max-width:46%;text-align:right;font-style:italic}
+@media(max-width:640px){.quote{display:none}}
+
+/* ---------- centre ---------- */
+.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:8px 16px 96px;min-height:0;overflow-y:auto;z-index:4}
+.prompt{font-size:clamp(20px,4vw,28px);font-weight:700;text-align:center;text-wrap:balance;margin:0}
+.chip{display:inline-flex;align-items:center;gap:8px;max-width:min(92vw,420px);
+  padding:7px 15px;border-radius:999px;background:var(--card);border:1px solid var(--border);
+  font-size:13.5px;transition:transform .2s}
+.chip:hover{transform:translateY(-1px)}
+.chip .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .ct{color:var(--sub);font-variant-numeric:tabular-nums;flex:none}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--card);border:1px solid var(--border);flex-wrap:wrap;justify-content:center}
+.tabs button{padding:7px 15px;border-radius:999px;font-size:13px;font-weight:600;transition:.2s}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--onAccent)}
+.hearts{display:flex;gap:6px;min-height:18px}
+.strip{display:flex;gap:3px;width:min(440px,78vw);height:9px}
+.strip .seg{border-radius:3px;background:var(--card);border:1px solid transparent}
+.strip .seg.focus{background:color-mix(in srgb, var(--accent) 45%, transparent)}
+.strip .seg.focus.past{background:var(--accent)}
+.strip .seg.focus.now{background:var(--accent);box-shadow:0 0 0 2px var(--border)}
+.strip .seg.short,.strip .seg.long{background:var(--card);border-color:var(--border)}
+.strip .seg.now{outline:1px solid var(--text);outline-offset:1px}
+.planline{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+/* ---------- timer faces ---------- */
+.face{display:flex;align-items:center;justify-content:center;width:100%;max-width:100%}
+.f-digital{font-family:var(--timerFont);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;
+  text-align:center;max-width:100%;overflow:hidden}
+
+/* flip clock */
+.f-flip{display:flex;align-items:center;gap:6px;font-family:var(--timerFont);font-variant-numeric:tabular-nums}
+.f-flip .sep{font-weight:700;opacity:.45;padding:0 1px}
+.f-card{position:relative;display:grid;place-items:center;border-radius:11px;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--solid) 70%, #000 12%) 0 50%, color-mix(in srgb, var(--solid) 86%, #000 26%) 50% 100%);
+  border:1px solid var(--border);box-shadow:0 6px 18px rgba(0,0,0,.28);font-weight:800;line-height:1;overflow:hidden}
+.f-card::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.35)}
+.f-card.turn{animation:flip .42s ease}
+@keyframes flip{0%{transform:perspective(320px) rotateX(0)}45%{transform:perspective(320px) rotateX(-32deg)}100%{transform:perspective(320px) rotateX(0)}}
+
+/* ring + analog share the svg box */
+.f-svg{display:block;max-width:100%;height:auto}
+
+/* minimal progress line */
+.f-line{display:flex;flex-direction:column;align-items:center;gap:14px;width:min(520px,84vw)}
+.f-line .lt{font-family:var(--timerFont);font-weight:300;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.f-line .track{position:relative;width:100%;height:1px;background:var(--border)}
+.f-line .fill{position:absolute;inset:0 auto 0 0;height:1px;background:var(--text);width:0;transition:width .3s linear}
+.f-line .dot{position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 30%, transparent);transition:left .3s linear}
+.f-line .ends{display:flex;justify-content:space-between;width:100%;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--sub)}
+
+/* ---------- scenes ---------- */
+#bgimg{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center;display:none}
+#bgimg.on{display:block}
+#scene{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none}
+#scene svg{position:absolute;inset:0;width:100%;height:100%}
+.veil{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,.12) 45%,rgba(0,0,0,.42))}
+.veil.light{background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,.1) 45%,rgba(255,255,255,.45))}
+.petal{position:absolute;top:-6%;border-radius:76% 24% 70% 30%/ 30% 70% 30% 70%;
+  background:linear-gradient(135deg,#ffd9e8,#ff9ec4);opacity:.85;animation:fall linear infinite}
+@keyframes fall{
+  0%{transform:translate3d(0,-10vh,0) rotate(0deg)}
+  100%{transform:translate3d(14vw,112vh,0) rotate(540deg)}
+}
+.drop{position:absolute;top:-14%;width:1.5px;background:linear-gradient(transparent,rgba(214,235,255,.75));
+  animation:rain linear infinite}
+@keyframes rain{0%{transform:translate3d(0,-18vh,0)}100%{transform:translate3d(-7vw,116vh,0)}}
+.star{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;animation:twinkle ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.15;transform:scale(.8)}50%{opacity:.95;transform:scale(1.25)}}
+.shoot{position:absolute;width:120px;height:1.5px;background:linear-gradient(90deg,transparent,#fff);
+  opacity:0;animation:shoot 9s linear infinite}
+@keyframes shoot{0%{opacity:0;transform:translate3d(0,0,0) rotate(18deg)}
+  4%{opacity:.9}14%{opacity:0;transform:translate3d(46vw,20vh,0) rotate(18deg)}100%{opacity:0}}
+.ribbon{position:absolute;left:-20%;width:140%;height:34vh;filter:blur(42px);opacity:.5;
+  border-radius:50%;animation:wave ease-in-out infinite alternate}
+@keyframes wave{0%{transform:translate3d(-6%,0,0) scaleY(.8)}100%{transform:translate3d(6%,5vh,0) scaleY(1.25)}}
+.firefly{position:absolute;width:4px;height:4px;border-radius:50%;background:#ffe9a8;
+  box-shadow:0 0 9px 3px rgba(255,220,130,.6);animation:float ease-in-out infinite alternate}
+@keyframes float{0%{transform:translate3d(0,0,0);opacity:.25}100%{transform:translate3d(5vw,-7vh,0);opacity:.95}}
+.bar{width:min(440px,78vw);height:4px;border-radius:99px;background:var(--card);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .3s linear}
+.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+.rnd{width:46px;height:46px;border-radius:50%;background:var(--card);border:1px solid var(--border);
+  display:grid;place-items:center;transition:transform .15s}
+.rnd:hover{transform:scale(1.07)}
+.rnd[aria-pressed="true"]{background:var(--accent);color:var(--onAccent)}
+.go{display:inline-flex;align-items:center;gap:9px;padding:14px 38px;border-radius:999px;
+  background:var(--accent);color:var(--onAccent);font-weight:700;font-size:17px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);transition:transform .15s}
+.go:hover{transform:scale(1.04)}
+.hint{font-size:11.5px;color:var(--sub);letter-spacing:.04em}
+
+/* ---------- docks ---------- */
+.dock{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;z-index:6;flex-wrap:wrap}
+.dock.l{left:18px}
+.dock.r{right:18px;justify-content:flex-end}
+.dockbtn{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--border);
+  display:grid;place-items:center;transition:transform .15s}
+.dockbtn:hover{transform:translateY(-2px)}
+.dockbtn[aria-pressed="true"]{background:var(--accent);color:var(--onAccent)}
+.streak{height:40px;padding:0 12px;border-radius:12px;background:var(--card);border:1px solid var(--border);
+  display:flex;align-items:center;gap:6px;font-weight:700;font-size:13.5px;font-variant-numeric:tabular-nums}
+@media(max-width:560px){
+  .dock{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  .dock.l{left:12px}.dock.r{right:12px}
+  .streak{display:none}
+}
+
+/* ---------- panel ---------- */
+#panel{position:absolute;inset:0 auto 0 0;width:min(100%,380px);z-index:30;
+  background:var(--panel);color:var(--panelText);border-right:1px solid rgba(255,255,255,.1);
+  backdrop-filter:blur(16px);transform:translateX(-102%);transition:transform .32s ease;
+  overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(18px + env(safe-area-inset-top,0px)) 18px calc(24px + env(safe-area-inset-bottom,0px))}
+#panel.open{transform:none}
+.phead{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.phead h2{margin:0;flex:1;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.sect{margin-bottom:22px}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.45);margin:0 0 9px}
+.box{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:13px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.row+.row{margin-top:9px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.num{width:66px;text-align:center;border-radius:9px;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.12);padding:6px;font-variant-numeric:tabular-nums}
+.txt{width:100%;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  padding:9px 11px;font-size:13.5px;outline:none}
+.txt::placeholder{color:rgba(255,255,255,.35)}
+.pill{padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);font-size:12.5px;font-weight:600;text-align:center;transition:.15s}
+.pill[aria-pressed="true"]{background:var(--accent);color:var(--onAccent);border-color:transparent}
+.solid{background:var(--accent);color:var(--onAccent);border-radius:10px;padding:9px 14px;font-weight:700;font-size:13px}
+.ghost{border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:8px 13px;font-size:12.5px;font-weight:600}
+.note{font-size:11.5px;line-height:1.55;color:rgba(255,255,255,.5);margin:8px 0 0}
+input[type=range]{accent-color:var(--accent);width:100%}
+.swatch{border-radius:12px;overflow:hidden;border:2px solid transparent;transition:.15s}
+.swatch[aria-pressed="true"]{border-color:#fff}
+.swatch .sw{height:62px}
+.swatch .nm{font-size:11.5px;font-weight:600;padding:6px 8px;text-align:left;background:rgba(0,0,0,.35)}
+.task{display:flex;align-items:center;gap:10px;padding:11px;border-radius:12px;
+  background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1)}
+.task+.task{margin-top:8px}
+.task.done{opacity:.45}
+.task .nm{font-size:13.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task .nm.strike{text-decoration:line-through}
+.task .sub{font-size:11px;color:rgba(255,255,255,.45);font-variant-numeric:tabular-nums}
+.stat{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:13px}
+.stat .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45)}
+.stat .v{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:3px}
+.mini{font-size:11px;color:rgba(255,255,255,.45)}
+.ic{flex:none;display:block}
+.sp{flex:1;min-width:0}
+.scorewrap{display:flex;align-items:center;gap:14px}
+.ring{flex:none}
+.routine{display:flex;align-items:center;gap:10px;padding:11px;border-radius:12px;
+  background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.1);width:100%;text-align:left}
+.routine+.routine{margin-top:8px}
+.badge{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:3px 7px;border-radius:999px;background:var(--accent);color:var(--onAccent)}
+.frame{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25)}
+.frame iframe{display:block;width:100%;border:0}
+input[type=color]{width:38px;height:30px;padding:0;border:1px solid rgba(255,255,255,.2);
+  border-radius:8px;background:none;cursor:pointer}
+input[type=color]::-webkit-color-swatch-wrapper{padding:2px}
+input[type=color]::-webkit-color-swatch{border:none;border-radius:6px}
+.seg2{display:flex;gap:4px;padding:3px;border-radius:999px;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.1);margin-bottom:16px}
+.seg2 button{flex:1;padding:7px 4px;border-radius:999px;font-size:12px;font-weight:600}
+.seg2 button[aria-pressed="true"]{background:var(--accent);color:var(--onAccent)}
+.previewSw{height:84px;border-radius:12px;border:1px solid rgba(255,255,255,.14);
+  display:grid;place-items:center;font-weight:800;font-size:19px;font-variant-numeric:tabular-nums}
+.scenebtn{border-radius:12px;overflow:hidden;border:2px solid transparent;transition:.15s;text-align:left}
+.scenebtn[aria-pressed="true"]{border-color:#fff}
+.scenebtn .thumb{height:54px;position:relative;overflow:hidden}
+.scenebtn .nm{font-size:11.5px;font-weight:600;padding:6px 8px;background:rgba(0,0,0,.35)}
+.delx{opacity:.55;padding:4px}
+.delx:hover{opacity:1}
+
+/* ---------- toast ---------- */
+#toast{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%) translateY(-18px);
+  background:rgba(10,10,14,.9);color:#fff;border:1px solid rgba(255,255,255,.16);
+  padding:9px 17px;border-radius:999px;font-size:13px;z-index:60;opacity:0;pointer-events:none;
+  transition:opacity .25s,transform .25s;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:88vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- shield overlay ---------- */
+#shield{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:10px;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);text-align:center;padding:24px}
+#shield.on{display:flex}
+#shield .big{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+</style>
+
+</head><body>
+<div id="app">
+  <div id="bgimg" aria-hidden="true"></div>
+  <div id="scene" aria-hidden="true"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <div class="topbar">
+    <div class="brand"><span id="brandIcon"></span>focus<span class="light">study</span></div>
+    <p class="quote" id="quote"></p>
+  </div>
+
+  <div class="stage">
+    <h1 class="prompt" id="prompt">What do you want to focus on?</h1>
+
+    <button class="chip" id="taskChip"></button>
+
+    <div class="tabs" id="phaseTabs"></div>
+    <div class="hearts" id="hearts"></div>
+
+    <div class="face" id="face"></div>
+    <div class="bar" id="bar"><i id="barFill"></i></div>
+
+    <div class="controls">
+      <button class="rnd" id="btnReset" title="Reset (R)" aria-label="Reset"></button>
+      <button class="go" id="btnGo"></button>
+      <button class="rnd" id="btnSkip" title="Skip (S)" aria-label="Skip phase"></button>
+      <button class="rnd" id="btnPip" title="Floating timer" aria-label="Floating timer" aria-pressed="false"></button>
+      <button class="rnd" id="btnShield" title="Focus shield" aria-label="Focus shield" aria-pressed="false"></button>
+    </div>
+    <p class="hint" id="hint">Space start / pause · R reset · S skip</p>
+  </div>
+
+  <div class="dock l">
+    <button class="dockbtn" data-panel="tasks" title="Tasks" aria-label="Tasks"></button>
+    <button class="dockbtn" data-panel="routines" title="Routines" aria-label="Routines"></button>
+    <button class="dockbtn" data-panel="music" title="Music" aria-label="Music"></button>
+    <button class="dockbtn" data-panel="timer" title="Timer settings" aria-label="Timer settings"></button>
+  </div>
+
+  <div class="dock r">
+    <div class="streak" id="streak"></div>
+    <button class="dockbtn" data-panel="account" title="Account" aria-label="Account"></button>
+    <button class="dockbtn" data-panel="stats" title="Statistics" aria-label="Statistics"></button>
+    <button class="dockbtn" data-panel="sounds" title="Ambient sound" aria-label="Ambient sound"></button>
+    <button class="dockbtn" data-panel="themes" title="Themes" aria-label="Themes"></button>
+  </div>
+
+  <div id="shield">
+    <div class="big" id="shieldTitle">Focus shield on</div>
+    <div id="shieldBody" style="font-size:13px;opacity:.75;max-width:320px;line-height:1.5"></div>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="solid" id="shieldResume">Back in</button>
+      <button class="ghost" id="shieldOff">End shield</button>
+    </div>
+  </div>
+
+  <aside id="panel" aria-hidden="true">
+    <div class="phead">
+      <h2 id="panelTitle"></h2>
+      <button class="dockbtn" id="panelClose" aria-label="Close panel" style="width:34px;height:34px"></button>
+    </div>
+    <div id="panelBody"></div>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+"use strict";
+
+/* ===================================================================
+   CLOUD ACCOUNTS — paste your two Supabase keys here, or enter them in
+   the app under Account. Both are safe to ship in the page: the anon
+   key is designed to be public and row-level security is what actually
+   protects the data. Never put the service_role key in this file.
+   =================================================================== */
+const SUPABASE_URL = "";       // e.g. https://abcdefgh.supabase.co
+const SUPABASE_ANON_KEY = "";  // the "anon public" key from Settings → API
+/* ============================ icons ============================ */
+const P = {
+  play:'<polygon points="6 3 20 12 6 21 6 3"/>',
+  pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+  reset:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  skip:'<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>',
+  plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>',
+  check:'<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+  circle:'<circle cx="12" cy="12" r="9"/>',
+  vol:'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>',
+  mute:'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>',
+  pip:'<path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><rect x="12" y="11" width="7" height="6" rx="1"/>',
+  star:'<polygon points="12 3 14.8 9.1 21.5 9.8 16.5 14.3 17.9 21 12 17.6 6.1 21 7.5 14.3 2.5 9.8 9.2 9.1"/>',
+  x:'<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>',
+  palette:'<circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.3" fill="currentColor"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor"/><circle cx="15.5" cy="10" r="1.3" fill="currentColor"/><circle cx="12" cy="15" r="1.8" fill="currentColor"/>',
+  list:'<line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor"/>',
+  chart:'<line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="11" width="3" height="7"/><rect x="11" y="6" width="3" height="12"/><rect x="16" y="14" width="3" height="4"/>',
+  music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  flame:'<path d="M12 3c3 3.5 5.5 6 5.5 9.5A5.5 5.5 0 0 1 12 18a5.5 5.5 0 0 1-5.5-5.5C6.5 10 8 8.5 9 7c.6 1.4 1.3 2.2 2 2.6C11.6 8 11.4 5.6 12 3z"/>',
+  heart:'<path d="M12 20s-7-4.4-7-9.2A3.8 3.8 0 0 1 12 8.6 3.8 3.8 0 0 1 19 10.8C19 15.6 12 20 12 20z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
+  shield:'<path d="M12 3l7 3v5.5c0 4.3-2.9 7.7-7 9.5-4.1-1.8-7-5.2-7-9.5V6z"/>',
+  repeat:'<path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
+  out:'<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
+  user:'<circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/>',
+  cloud:'<path d="M7.2 18.5a4.2 4.2 0 0 1 .5-8.37A5.6 5.6 0 0 1 18.3 10.6a3.95 3.95 0 0 1-.4 7.9z"/>',
+  sync:'<path d="M20 11a8 8 0 0 0-14.3-4.4"/><path d="M4 13a8 8 0 0 0 14.3 4.4"/><path d="M4 4v4h4"/><path d="M20 20v-4h-4"/>'
+};
+function ic(n, size, fill){
+  return '<svg class="ic" width="'+(size||18)+'" height="'+(size||18)+'" viewBox="0 0 24 24" fill="'+(fill||'none')+
+    '" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+P[n]+'</svg>';
+}
+
+/* ============================ config ============================ */
+const THEMES = {
+  auraTwilight:{name:"Aura Twilight",bg:"radial-gradient(circle at 50% 35%, #ff8a5c 0%, #c64ed0 35%, #6a3cb5 65%, #4527a0 100%)",solid:"#5b2a9e",text:"#ffffff",sub:"rgba(255,255,255,.62)",card:"rgba(255,255,255,.12)",border:"rgba(255,255,255,.2)",accent:"#7c3aed",onAccent:"#ffffff",dark:1},
+  peachHeart:{name:"Peach Aura",bg:"radial-gradient(circle at 50% 40%, #ffe3ee 0%, #ffb6d5 45%, #ff8fb3 100%)",solid:"#ffb6d5",text:"#5b2233",sub:"rgba(91,34,51,.6)",card:"rgba(255,255,255,.45)",border:"rgba(255,255,255,.65)",accent:"#e5447c",onAccent:"#ffffff",dark:0},
+  flare:{name:"Flare",bg:"radial-gradient(circle at 75% 25%, rgba(255,77,109,.55) 0%, transparent 45%), linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f0c29 100%)",solid:"#1a1a2e",text:"#ffffff",sub:"rgba(255,255,255,.55)",card:"rgba(255,255,255,.07)",border:"rgba(255,255,255,.15)",accent:"#ff4d6d",onAccent:"#ffffff",dark:1},
+  lavaLamp:{name:"Lava Lamp",bg:"linear-gradient(120deg,#ff6f61,#c64ed0,#4d7cff,#ff9f43)",solid:"#7c3aed",animated:1,text:"#ffffff",sub:"rgba(255,255,255,.68)",card:"rgba(255,255,255,.16)",border:"rgba(255,255,255,.26)",accent:"#ffffff",onAccent:"#1a1a2e",dark:1},
+  ink:{name:"Minimalist Black",bg:"linear-gradient(135deg,#060606,#1a1a1a)",solid:"#111111",text:"#ffffff",sub:"rgba(255,255,255,.45)",card:"rgba(255,255,255,.06)",border:"rgba(255,255,255,.13)",accent:"#ffffff",onAccent:"#111111",dark:1},
+  forest:{name:"Forest",bg:"linear-gradient(135deg,#0b3d2e 0%,#1a5e46 50%,#06281f 100%)",solid:"#123c2e",text:"#ffffff",sub:"rgba(255,255,255,.55)",card:"rgba(255,255,255,.09)",border:"rgba(255,255,255,.17)",accent:"#34d399",onAccent:"#06281f",dark:1},
+  daylight:{name:"Daylight",bg:"linear-gradient(135deg,#ffffff 0%,#f1f5f9 60%,#e2e8f0 100%)",solid:"#e2e8f0",text:"#1e293b",sub:"rgba(30,41,59,.55)",card:"rgba(15,23,42,.05)",border:"rgba(15,23,42,.1)",accent:"#4f46e5",onAccent:"#ffffff",dark:0},
+  dune:{name:"Dune",bg:"linear-gradient(145deg,#2b1a10 0%,#7a4a24 55%,#c98b48 100%)",solid:"#3a2415",text:"#fff6ec",sub:"rgba(255,246,236,.58)",card:"rgba(255,246,236,.1)",border:"rgba(255,246,236,.18)",accent:"#f0a95c",onAccent:"#2b1a10",dark:1}
+};
+const FACES = {
+  digital:{label:"Digital"}, line:{label:"Progress line"}, ring:{label:"Ring"},
+  flip:{label:"Flip clock"}, analog:{label:"Analog dial"}
+};
+/* Scenes are drawn here in SVG and CSS — nothing is downloaded, so they work
+   offline and there's no third-party artwork involved. */
+const SCENES = {
+  none:{label:"None"}, sakura:{label:"Sakura drift"}, rain:{label:"Night rain"},
+  dusk:{label:"City dusk"}, stars:{label:"Starfield"}, aurora:{label:"Aurora"},
+  meadow:{label:"Firefly meadow"}
+};
+const FONTS = {
+  sans:{label:"Sans",family:"'Figtree',ui-sans-serif,system-ui,sans-serif"},
+  mono:{label:"Mono",family:"'DM Mono',ui-monospace,'SF Mono',Menlo,monospace"},
+  serif:{label:"Serif",family:"'Fraunces',Georgia,'Times New Roman',serif"},
+  rounded:{label:"Rounded",family:"'Quicksand',-apple-system,'Segoe UI',sans-serif"},
+  condensed:{label:"Condensed",family:"'Archivo Narrow','Arial Narrow',sans-serif"},
+  lexend:{label:"Lexend",family:"'Lexend',ui-sans-serif,system-ui,sans-serif"},
+  atkinson:{label:"Atkinson",family:"'Atkinson Hyperlegible',ui-sans-serif,system-ui,sans-serif"},
+  inter:{label:"Inter",family:"'Inter',ui-sans-serif,system-ui,sans-serif"},
+  manrope:{label:"Manrope",family:"'Manrope',ui-sans-serif,system-ui,sans-serif"},
+  outfit:{label:"Outfit",family:"'Outfit',ui-sans-serif,system-ui,sans-serif"},
+  nunito:{label:"Nunito",family:"'Nunito',ui-rounded,system-ui,sans-serif"},
+  grotesk:{label:"Grotesk",family:"'Space Grotesk',ui-sans-serif,system-ui,sans-serif"},
+  sora:{label:"Sora",family:"'Sora',ui-sans-serif,system-ui,sans-serif"},
+  jbmono:{label:"JetBrains",family:"'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace"},
+  playfair:{label:"Playfair",family:"'Playfair Display',Georgia,'Times New Roman',serif"},
+  lora:{label:"Lora",family:"'Lora',Georgia,'Times New Roman',serif"}
+};
+const SOUNDS = {
+  rain:{label:"Rainy Day",emoji:"🌧️",type:"pink",cut:900},
+  white:{label:"White Noise",emoji:"🌫️",type:"white",cut:4000},
+  hum:{label:"Deep Hum",emoji:"🎧",type:"brown",cut:350},
+  ocean:{label:"Ocean",emoji:"🌊",type:"brown",cut:600,sweep:1}
+};
+const SERVICES = {
+  spotify:{label:"Spotify",hint:"open.spotify.com/playlist/…"},
+  youtube:{label:"YouTube",hint:"youtube.com/playlist?list=… or a video link"},
+  apple:{label:"Apple Music",hint:"music.apple.com/…/playlist/…"}
+};
+const MODES = {
+  pomodoro:{label:"Pomodoro"}, plan:{label:"Plan my time"},
+  animedoro:{label:"Animedoro"}, custom:{label:"Countdown"}, stopwatch:{label:"Stopwatch"}
+};
+const QUOTES = [
+  "Small steps, repeated daily, build big results.",
+  "Discipline is choosing what you want most over what you want now.",
+  "Progress, not perfection.",
+  "One focused hour beats five distracted ones.",
+  "Start before you feel ready.",
+  "Deep work, shallow worries.",
+  "Consistency compounds.",
+  "Future you is taking notes."
+];
+const DEFAULT_ROUTINES = [
+  {id:"r1",name:"Theory study",mode:"pomodoro",work:25,short:5,long:15,before:4,at:"18:00"},
+  {id:"r2",name:"Deep work / coding",mode:"pomodoro",work:50,short:10,long:20,before:2,at:"06:00"},
+  {id:"r3",name:"Animedoro",mode:"animedoro",work:40,short:20,long:20,before:3,at:""},
+  {id:"r4",name:"Exam sprint",mode:"custom",custom:90,at:""},
+  {id:"r5",name:"Gym",mode:"stopwatch",at:"17:00"}
+];
+const STORE_KEY = "focusstudy.v2";
+
+const DEFAULTS = {
+  settings:{work:25,short:5,long:15,before:4,custom:30,animeWork:40,animeBreak:20,
+    soundOn:false,sound:"rain",volume:.4,font:"sans",size:96,spacing:.16,
+    goal:120,autoStart:true,chime:true,face:"digital",autoBreaks:true},
+  theme:"auraTwilight",
+  scene:"none",
+  customThemes:{},
+  bgImage:null,
+  themeForm:{name:"",a:"#2b1b4d",b:"#8b5cf6",style:"radial",accent:"#f0abfc",light:true},
+  music:{service:"spotify",links:{spotify:"",youtube:"",apple:""}},
+  tasks:[], sessions:[], routines:DEFAULT_ROUTINES.slice(),
+  activeTaskId:null, cycles:0,
+  plan:null,              // {steps:[{type,min}], index, total, includeBreaks, even}
+  planForm:{h:1, m:40, includeBreaks:true, even:false, blocks:0, longAt:"auto"}
+};
+
+/* ============================ state ============================ */
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function load(){
+  const base = clone(DEFAULTS);
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){
+      const d = JSON.parse(raw);
+      base.settings = Object.assign(base.settings, d.settings||{});
+      if(Array.isArray(d.tasks)) base.tasks = d.tasks;
+      if(Array.isArray(d.sessions)) base.sessions = d.sessions;
+      if(Array.isArray(d.routines) && d.routines.length) base.routines = d.routines;
+      if(d.customThemes && typeof d.customThemes === "object") base.customThemes = d.customThemes;
+      if(d.theme && (THEMES[d.theme] || base.customThemes[d.theme])) base.theme = d.theme;
+      if(d.scene && SCENES[d.scene]) base.scene = d.scene;
+      if(typeof d.bgImage === "string") base.bgImage = d.bgImage;
+      if(d.themeForm) base.themeForm = Object.assign(base.themeForm, d.themeForm);
+      if(d.music) base.music = Object.assign(base.music, d.music);
+      if(d.plan && Array.isArray(d.plan.steps) && d.plan.steps.length) base.plan = d.plan;
+      if(d.planForm) base.planForm = Object.assign(base.planForm, d.planForm);
+      if(d.activeTaskId !== undefined) base.activeTaskId = d.activeTaskId;
+      if(typeof d.cycles === "number") base.cycles = d.cycles;
+      if(d.mode && MODES[d.mode]) base.mode = d.mode;
+    }
+  }catch(e){ /* first run, private window, or blocked storage — defaults are fine */ }
+  return base;
+}
+let S = load();
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }
+    catch(e){ /* storage unavailable; the app still runs for this session */ }
+    cloudPush();
+  }, 300);
+}
+
+/* Timer is wall-clock based: we store the moment it ends, never a countdown
+   variable we decrement. Background tabs throttle setInterval to once a minute,
+   which is what made the old version lose time. */
+const T = {
+  mode: S.mode || "pomodoro",
+  phase: "focus",         // focus | short | long
+  running: false,
+  endsAt: 0,              // ms timestamp when the countdown hits zero
+  leftMs: 0,              // remaining while paused
+  swBase: 0,              // accumulated stopwatch ms while paused
+  swStart: 0              // moment the stopwatch was last resumed
+};
+
+/* ============================ helpers ============================ */
+const $ = function(s){ return document.querySelector(s); };
+function esc(s){ return String(s).replace(/[&<>"']/g, function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function pad(n){ return String(n).padStart(2,"0"); }
+function fmt(ms){
+  const t = Math.max(0, Math.round(ms/1000));
+  const h = Math.floor(t/3600), m = Math.floor((t%3600)/60), s = t%60;
+  return h ? h+":"+pad(m)+":"+pad(s) : pad(m)+":"+pad(s);
+}
+/* Local calendar day. toISOString() would roll over at 02:00 in UTC+2 and file
+   late-night sessions under tomorrow. */
+function dayKey(d){
+  d = d || new Date();
+  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+}
+function shiftDay(n){ const d = new Date(); d.setDate(d.getDate()+n); return d; }
+
+/* ============================ theme ============================ */
+function allThemes(){ return Object.assign({}, THEMES, S.customThemes || {}); }
+function theme(){ return allThemes()[S.theme] || THEMES.auraTwilight; }
+
+/* Builds a full theme from the five choices in the builder, so a custom theme
+   behaves exactly like a built-in one everywhere else in the app. */
+function makeTheme(f){
+  const light = !f.light;             // f.light === true means light text on dark ground
+  const bg = f.style === "radial"
+      ? "radial-gradient(circle at 50% 35%, "+f.b+" 0%, "+f.a+" 72%)"
+    : f.style === "animated"
+      ? "linear-gradient(120deg, "+f.a+", "+f.b+", "+f.accent+", "+f.a+")"
+      : "linear-gradient(135deg, "+f.a+" 0%, "+f.b+" 100%)";
+  return {
+    name: f.name || "My theme", bg: bg, solid: f.a,
+    animated: f.style === "animated" ? 1 : 0,
+    text: f.light ? "#ffffff" : "#17141f",
+    sub: f.light ? "rgba(255,255,255,.6)" : "rgba(23,20,31,.58)",
+    card: f.light ? "rgba(255,255,255,.12)" : "rgba(23,20,31,.07)",
+    border: f.light ? "rgba(255,255,255,.22)" : "rgba(23,20,31,.14)",
+    accent: f.accent, onAccent: f.light ? "#ffffff" : "#ffffff",
+    dark: f.light ? 1 : 0, custom: 1,
+    form: {name:f.name, a:f.a, b:f.b, style:f.style, accent:f.accent, light:f.light}
+  };
+}
+
+function applyTheme(){
+  const th = theme();
+  const r = document.documentElement.style;
+  r.setProperty("--bg", th.bg);
+  r.setProperty("--solid", th.solid);
+  r.setProperty("--text", th.text);
+  r.setProperty("--sub", th.sub);
+  r.setProperty("--card", th.card);
+  r.setProperty("--border", th.border);
+  r.setProperty("--accent", th.accent);
+  r.setProperty("--onAccent", th.onAccent);
+  r.setProperty("--panel", th.dark ? "rgba(12,12,16,.9)" : "rgba(28,20,30,.92)");
+  document.documentElement.style.colorScheme = th.dark ? "dark" : "light";
+  $("#app").classList.toggle("anim", !!th.animated);
+}
+function applyFont(){
+  const f = FONTS[S.settings.font] || FONTS.sans;
+  document.documentElement.style.setProperty("--timerFont", f.family);
+}
+
+/* ============================ scenes ============================ */
+let sceneKey = null;
+function rnd(a,b){ return a + Math.random()*(b-a); }
+function sceneHTML(key){
+  const bits = [];
+  if(key === "sakura"){
+    for(let i=0;i<24;i++){
+      const s = rnd(7,15);
+      bits.push('<span class="petal" style="left:'+rnd(-5,100).toFixed(1)+'%;width:'+s.toFixed(1)+'px;height:'+
+        (s*.78).toFixed(1)+'px;animation-duration:'+rnd(9,18).toFixed(1)+'s;animation-delay:-'+rnd(0,18).toFixed(1)+
+        's;opacity:'+rnd(.45,.9).toFixed(2)+'"></span>');
+    }
+    bits.push(branchSvg());
+  }
+  else if(key === "rain"){
+    for(let i=0;i<70;i++){
+      bits.push('<span class="drop" style="left:'+rnd(0,106).toFixed(1)+'%;height:'+rnd(26,82).toFixed(0)+
+        'px;animation-duration:'+rnd(.55,1.25).toFixed(2)+'s;animation-delay:-'+rnd(0,2).toFixed(2)+
+        's;opacity:'+rnd(.2,.6).toFixed(2)+'"></span>');
+    }
+    bits.push(skylineSvg(true));
+  }
+  else if(key === "dusk"){ bits.push(skylineSvg(false)); }
+  else if(key === "stars"){
+    for(let i=0;i<110;i++){
+      bits.push('<span class="star" style="left:'+rnd(0,100).toFixed(1)+'%;top:'+rnd(0,86).toFixed(1)+
+        '%;animation-duration:'+rnd(2.2,6).toFixed(1)+'s;animation-delay:-'+rnd(0,6).toFixed(1)+
+        's;transform:scale('+rnd(.6,1.9).toFixed(2)+')"></span>');
+    }
+    bits.push('<span class="shoot" style="left:4%;top:12%"></span>');
+    bits.push('<span class="shoot" style="left:28%;top:30%;animation-delay:4.5s"></span>');
+    bits.push(ridgeSvg());
+  }
+  else if(key === "aurora"){
+    const cols = ["#5eead4","#a78bfa","#f472b6"];
+    cols.forEach(function(c,i){
+      bits.push('<span class="ribbon" style="top:'+(6+i*17)+'%;background:radial-gradient(ellipse at 50% 50%, '+
+        c+' 0%, transparent 70%);animation-duration:'+(11+i*4)+'s;animation-delay:-'+(i*3)+'s"></span>');
+    });
+    for(let i=0;i<70;i++){
+      bits.push('<span class="star" style="left:'+rnd(0,100).toFixed(1)+'%;top:'+rnd(0,70).toFixed(1)+
+        '%;animation-duration:'+rnd(2.5,6).toFixed(1)+'s;animation-delay:-'+rnd(0,6).toFixed(1)+'s"></span>');
+    }
+    bits.push(ridgeSvg());
+  }
+  else if(key === "meadow"){
+    for(let i=0;i<26;i++){
+      bits.push('<span class="firefly" style="left:'+rnd(2,97).toFixed(1)+'%;top:'+rnd(35,92).toFixed(1)+
+        '%;animation-duration:'+rnd(4,11).toFixed(1)+'s;animation-delay:-'+rnd(0,8).toFixed(1)+'s"></span>');
+    }
+    bits.push(ridgeSvg());
+  }
+  const th = theme();
+  bits.push('<div class="veil'+(th.dark?"":" light")+'"></div>');
+  return bits.join("");
+}
+/* A branch across the top corner — the sakura scene reads as a scene, not just confetti. */
+function branchSvg(){
+  return '<svg viewBox="0 0 400 300" preserveAspectRatio="xMinYMin slice" aria-hidden="true">'+
+    '<path d="M-10 18 C 60 30, 110 12, 165 44 C 200 64, 232 52, 268 78" stroke="rgba(60,30,40,.55)" stroke-width="5" fill="none" stroke-linecap="round"/>'+
+    '<path d="M72 26 C 86 6, 104 2, 118 -6" stroke="rgba(60,30,40,.45)" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+    '<path d="M168 46 C 182 28, 198 24, 214 16" stroke="rgba(60,30,40,.45)" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+    [[64,20],[80,12],[96,20],[120,30],[136,22],[168,42],[184,30],[200,22],[214,14],[244,62],[262,72],[40,16],[26,24]]
+      .map(function(p){ return '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+(5+Math.random()*4).toFixed(1)+
+        '" fill="rgba(255,183,213,.75)"/>'; }).join("")+
+    '</svg>';
+}
+/* Layered hills with a low moon — used behind the quieter scenes. */
+function ridgeSvg(){
+  return '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">'+
+    '<circle cx="312" cy="62" r="26" fill="rgba(255,250,228,.9)"/>'+
+    '<circle cx="312" cy="62" r="42" fill="rgba(255,250,228,.12)"/>'+
+    '<path d="M0 232 L52 196 L96 224 L148 180 L206 228 L252 204 L312 240 L400 198 L400 300 L0 300 Z" fill="rgba(10,12,26,.55)"/>'+
+    '<path d="M0 262 L68 232 L126 258 L190 224 L250 256 L318 230 L400 262 L400 300 L0 300 Z" fill="rgba(6,8,18,.78)"/>'+
+    '</svg>';
+}
+/* City skyline with lit windows; `night` dims the sun into a streetlamp glow. */
+function skylineSvg(night){
+  let b = "", w = "";
+  let x = -10;
+  while(x < 410){
+    const bw = 18 + Math.random()*30, bh = 60 + Math.random()*130;
+    b += '<rect x="'+x.toFixed(1)+'" y="'+(300-bh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+
+      '" fill="rgba(8,10,24,'+(night?.86:.72)+')"/>';
+    for(let wy = 300-bh+10; wy < 292; wy += 13){
+      for(let wx = x+5; wx < x+bw-6; wx += 10){
+        if(Math.random() > .55) w += '<rect x="'+wx.toFixed(1)+'" y="'+wy.toFixed(1)+
+          '" width="4" height="6" fill="rgba(255,214,140,'+(Math.random()*.55+.3).toFixed(2)+')"/>';
+      }
+    }
+    x += bw + 3 + Math.random()*7;
+  }
+  const sun = night
+    ? '<circle cx="78" cy="58" r="20" fill="rgba(214,235,255,.5)"/><circle cx="78" cy="58" r="52" fill="rgba(214,235,255,.08)"/>'
+    : '<circle cx="300" cy="96" r="54" fill="rgba(255,208,140,.75)"/><circle cx="300" cy="96" r="96" fill="rgba(255,170,110,.16)"/>';
+  return '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">'+sun+
+    '<path d="M0 214 L70 186 L140 214 L220 178 L300 212 L400 182 L400 300 L0 300 Z" fill="rgba(12,14,30,.4)"/>'+
+    b + w +
+    '<path d="M0 290 L400 290" stroke="rgba(0,0,0,.4)" stroke-width="20"/></svg>';
+}
+function applyScene(force){
+  const key = SCENES[S.scene] ? S.scene : "none";
+  const img = $("#bgimg");
+  if(S.bgImage){
+    img.style.backgroundImage = "url("+S.bgImage+")";
+    img.classList.add("on");
+  } else {
+    img.classList.remove("on");
+    img.style.backgroundImage = "";
+  }
+  if(key === sceneKey && !force) return;
+  sceneKey = key;
+  $("#scene").innerHTML = (key === "none" && !S.bgImage) ? "" : sceneHTML(key);
+}
+
+/* ============================ audio ============================ */
+let actx = null, noise = null, gainNode = null, sweepTimer = null;
+function ctx(){
+  if(!actx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    actx = new AC();
+  }
+  if(actx.state === "suspended") actx.resume();
+  return actx;
+}
+function noiseBuffer(c, kind){
+  const len = c.sampleRate * 3;
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const out = buf.getChannelData(0);
+  let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,last=0;
+  for(let i=0;i<len;i++){
+    const w = Math.random()*2-1;
+    if(kind === "white"){ out[i] = w*.5; }
+    else if(kind === "pink"){
+      b0=.99886*b0+w*.0555179; b1=.99332*b1+w*.0750759; b2=.96900*b2+w*.1538520;
+      b3=.86650*b3+w*.3104856; b4=.55000*b4+w*.5329522; b5=-.7616*b5-w*.0168980;
+      out[i]=(b0+b1+b2+b3+b4+b5+b6+w*.5362)*.09; b6=w*.115926;
+    } else { // brown
+      last = (last + .02*w)/1.02; out[i] = last*3.2;
+    }
+  }
+  return buf;
+}
+function stopNoise(){
+  clearInterval(sweepTimer); sweepTimer = null;
+  if(noise){ try{ noise.stop(); noise.disconnect(); }catch(e){} noise = null; }
+  if(gainNode){ try{ gainNode.disconnect(); }catch(e){} gainNode = null; }
+}
+function startNoise(){
+  const c = ctx(); if(!c) return false;
+  stopNoise();
+  const cfg = SOUNDS[S.settings.sound] || SOUNDS.rain;
+  const src = c.createBufferSource();
+  src.buffer = noiseBuffer(c, cfg.type);
+  src.loop = true;
+  const filter = c.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = cfg.cut;
+  const g = c.createGain();
+  g.gain.value = S.settings.volume;
+  src.connect(filter); filter.connect(g); g.connect(c.destination);
+  src.start();
+  noise = src; gainNode = g;
+  if(cfg.sweep){ // slow swell for the ocean preset
+    let up = true;
+    sweepTimer = setInterval(function(){
+      const target = up ? S.settings.volume : S.settings.volume*.35;
+      up = !up;
+      try{ g.gain.linearRampToValueAtTime(target, c.currentTime+5); }catch(e){}
+    }, 5000);
+  }
+  return true;
+}
+function chime(){
+  if(!S.settings.chime) return;
+  const c = ctx(); if(!c) return;
+  [523.25, 659.25, 783.99].forEach(function(f, i){
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = "sine"; o.frequency.value = f;
+    const t0 = c.currentTime + i*0.16;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(.22, t0+.02);
+    g.gain.exponentialRampToValueAtTime(.001, t0+.9);
+    o.connect(g); g.connect(c.destination);
+    o.start(t0); o.stop(t0+1);
+  });
+}
+
+/* ============================ cloud accounts ============================
+   Everything here is optional. With no Supabase project configured the app
+   behaves exactly as before: all data stays in this browser. Signed in, the
+   same data is mirrored to your own Postgres database and merged back on
+   every device you log into. */
+const CLOUD_KEY = "focusstudy.cloud";
+const SYNC_KEY  = "focusstudy.lastpush";
+let sb = null, me = null, cloudErr = null, syncing = false, lastSync = 0;
+
+function cloudCfg(){
+  if(SUPABASE_URL && SUPABASE_ANON_KEY) return {url:SUPABASE_URL, anonKey:SUPABASE_ANON_KEY, baked:true};
+  try{
+    const r = JSON.parse(localStorage.getItem(CLOUD_KEY) || "null");
+    if(r && r.url && r.anonKey) return r;
+  }catch(e){}
+  return null;
+}
+function lastPush(){ try{ return +localStorage.getItem(SYNC_KEY) || 0; }catch(e){ return 0; } }
+function setLastPush(t){ try{ localStorage.setItem(SYNC_KEY, String(t)); }catch(e){} }
+
+/* What travels to the cloud. The background picture is deliberately left out:
+   it can be hundreds of kilobytes and belongs to the device it was chosen on. */
+function stateBlob(){
+  return {settings:S.settings, tasks:S.tasks, routines:S.routines, theme:S.theme,
+    customThemes:S.customThemes, themeForm:S.themeForm, scene:S.scene, music:S.music,
+    plan:S.plan, planForm:S.planForm, cycles:S.cycles, activeTaskId:S.activeTaskId};
+}
+function adoptBlob(d){
+  if(!d) return;
+  if(d.settings) S.settings = Object.assign({}, S.settings, d.settings);
+  if(Array.isArray(d.tasks)) S.tasks = d.tasks;
+  if(Array.isArray(d.routines) && d.routines.length) S.routines = d.routines;
+  if(d.customThemes) S.customThemes = d.customThemes;
+  if(d.theme && allThemes()[d.theme]) S.theme = d.theme;
+  if(d.themeForm) S.themeForm = Object.assign({}, S.themeForm, d.themeForm);
+  if(d.scene && SCENES[d.scene]) S.scene = d.scene;
+  if(d.music) S.music = Object.assign({}, S.music, d.music);
+  if(d.plan !== undefined) S.plan = d.plan;
+  if(d.planForm) S.planForm = Object.assign({}, S.planForm, d.planForm);
+  if(typeof d.cycles === "number") S.cycles = d.cycles;
+  if(d.activeTaskId !== undefined) S.activeTaskId = d.activeTaskId;
+}
+
+/* The library normally arrives from the script tag above; if that host is
+   unreachable we try the mirror once before giving up. */
+function loadLib(url){
+  return new Promise(function(res, rej){
+    const s = document.createElement("script");
+    s.src = url; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+async function initCloud(){
+  const cfg = cloudCfg();
+  if(!cfg) return;
+  if(!window.supabase || !window.supabase.createClient){
+    try{ await loadLib("https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"); }
+    catch(e){}
+  }
+  if(!window.supabase || !window.supabase.createClient){
+    cloudErr = "The Supabase library didn't load. In the artifact preview that's expected — accounts only work on your own hosted copy.";
+    renderAccountIfOpen(); return;
+  }
+  try{
+    sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
+      auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}
+    });
+    const res = await sb.auth.getSession();
+    me = (res.data && res.data.session) ? res.data.session.user : null;
+    sb.auth.onAuthStateChange(function(ev, sess){
+      me = sess ? sess.user : null;
+      renderAccountIfOpen();
+      if(me && (ev === "SIGNED_IN" || ev === "INITIAL_SESSION")) syncAll(true);
+    });
+    if(me) syncAll(true);
+  }catch(e){
+    cloudErr = "Couldn't reach that Supabase project. Check the URL and key.";
+  }
+  renderAccountIfOpen();
+}
+
+function friendlyAuthError(e){
+  const m = ((e && (e.message || e.error_description)) || "").toLowerCase();
+  if(m.indexOf("invalid login") >= 0) return "That email and password don't match an account.";
+  if(m.indexOf("already registered") >= 0 || m.indexOf("already been registered") >= 0)
+    return "There's already an account with that email — try logging in.";
+  if(m.indexOf("password should be") >= 0) return "Password needs to be at least 6 characters.";
+  if(m.indexOf("email not confirmed") >= 0) return "Check your inbox and confirm your email first.";
+  if(m.indexOf("rate limit") >= 0 || m.indexOf("too many") >= 0) return "Too many attempts. Wait a minute and try again.";
+  if(m.indexOf("failed to fetch") >= 0 || m.indexOf("networkerror") >= 0)
+    return "Couldn't reach your Supabase project — check the URL, or your connection.";
+  return (e && e.message) ? e.message : "Something went wrong. Try again.";
+}
+
+async function signUp(email, password){
+  if(!sb) return;
+  const r = await sb.auth.signUp({email:email, password:password});
+  if(r.error) throw r.error;
+  if(r.data && r.data.user && !r.data.session){
+    toast("Account made. Confirm the link in your email, then log in.", 5000);
+  } else {
+    toast("Welcome in. Your data is syncing now.");
+  }
+}
+async function signIn(email, password){
+  if(!sb) return;
+  const r = await sb.auth.signInWithPassword({email:email, password:password});
+  if(r.error) throw r.error;
+  toast("Logged in — syncing your data.");
+}
+async function signOutNow(){
+  if(!sb) return;
+  await sb.auth.signOut();
+  me = null; setLastPush(0);
+  renderAccountIfOpen();
+  toast("Logged out. Your data stays on this device.");
+}
+async function resetPassword(email){
+  if(!sb) return;
+  const r = await sb.auth.resetPasswordForEmail(email, {redirectTo: location.href});
+  if(r.error) throw r.error;
+  toast("Reset link sent — check your email.", 4000);
+}
+
+/* Sessions are rows so your history survives a merge from two devices;
+   everything else is one JSON document, newest wins. */
+async function syncSessions(){
+  const r = await sb.from("sessions").select("id,date,type,minutes,task_name,at").eq("user_id", me.id);
+  if(r.error) throw r.error;
+  const rows = r.data || [];
+  const localIds = {}; S.sessions.forEach(function(s){ localIds[String(s.id)] = true; });
+  const remoteIds = {};
+  rows.forEach(function(x){
+    remoteIds[x.id] = true;
+    if(!localIds[x.id]){
+      S.sessions.push({id:x.id, date:x.date, type:x.type, minutes:Number(x.minutes),
+        taskName:x.task_name, taskId:null, at:new Date(x.at).getTime()});
+    }
+  });
+  const push = S.sessions.filter(function(s){ return !remoteIds[String(s.id)]; }).map(function(s){
+    return {id:String(s.id), user_id:me.id, date:s.date, type:s.type,
+      minutes:s.minutes, task_name:s.taskName || null,
+      at:new Date(s.at || Date.now()).toISOString()};
+  });
+  if(push.length){
+    const w = await sb.from("sessions").upsert(push, {onConflict:"user_id,id"});
+    if(w.error) throw w.error;
+  }
+  S.sessions.sort(function(a,b){ return (a.at||0) - (b.at||0); });
+}
+
+async function syncAll(quiet){
+  if(!sb || !me || syncing) return;
+  syncing = true; cloudErr = null; renderAccountIfOpen();
+  try{
+    const r = await sb.from("app_state").select("data,updated_at").eq("user_id", me.id).maybeSingle();
+    if(r.error) throw r.error;
+    const remote = r.data;
+    const remoteAt = remote ? new Date(remote.updated_at).getTime() : 0;
+    if(remote && remoteAt > lastPush()){ adoptBlob(remote.data); }   // another device is ahead
+    await syncSessions();
+    const now = Date.now();
+    const w = await sb.from("app_state").upsert({user_id:me.id, data:stateBlob(),
+      updated_at:new Date(now).toISOString()}, {onConflict:"user_id"});
+    if(w.error) throw w.error;
+    setLastPush(now); lastSync = now;
+    save(); applyScene(true); render();
+    if(!quiet) toast("Synced");
+  }catch(e){
+    cloudErr = friendlyAuthError(e);
+    if(!quiet) toast("Sync failed: "+cloudErr, 4000);
+  }
+  syncing = false; renderAccountIfOpen();
+}
+
+let pushTimer = null;
+function cloudPush(){            // debounced mirror of local changes
+  if(!sb || !me) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async function(){
+    try{
+      const now = Date.now();
+      const w = await sb.from("app_state").upsert({user_id:me.id, data:stateBlob(),
+        updated_at:new Date(now).toISOString()}, {onConflict:"user_id"});
+      if(!w.error){ setLastPush(now); lastSync = now; }
+    }catch(e){}
+  }, 2500);
+}
+async function cloudLogSession(s){
+  if(!sb || !me) return;
+  try{
+    await sb.from("sessions").upsert([{id:String(s.id), user_id:me.id, date:s.date, type:s.type,
+      minutes:s.minutes, task_name:s.taskName || null, at:new Date(s.at).toISOString()}],
+      {onConflict:"user_id,id"});
+  }catch(e){}
+}
+async function wipeCloud(){
+  if(!sb || !me) return;
+  try{
+    await sb.from("sessions").delete().eq("user_id", me.id);
+    await sb.from("app_state").delete().eq("user_id", me.id);
+    setLastPush(0);
+    toast("Cloud copy deleted. This device still has your data.", 4000);
+  }catch(e){ toast("Couldn't delete: "+friendlyAuthError(e), 4000); }
+  renderAccountIfOpen();
+}
+function renderAccountIfOpen(){ if(panelName === "account") renderPanel(); }
+
+/* ============================ toast ============================ */
+let toastTimer = null;
+function toast(msg, ms){
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.classList.remove("show"); }, ms||2600);
+}
+
+/* ============================ timer core ============================ */
+/* ============================ plan builder ============================
+   Turns "I have 1h40" into a real sequence of focus blocks and breaks.
+   includeBreaks=true  → the breaks come out of the time you gave me
+   includeBreaks=false → the time you gave me is focus only, breaks sit on top */
+/* Where the long breaks go when it's left on Auto: decided by how long the session is.
+   Under ~90 min of focus (or fewer than 3 blocks) a long break isn't worth it — short
+   breaks only. Longer sessions get one long break per "blocks before a long break"
+   setting, spread evenly through the plan so they land near the middle, not the end. */
+const AUTO_LONG_MIN = 90;
+function autoLongSpots(nb, focusMin){
+  const N = Math.max(1, S.settings.before);
+  if(nb < 3 || focusMin < AUTO_LONG_MIN) return [];
+  const count = Math.max(1, Math.floor((nb-1)/N));
+  const out = [];
+  for(let i = 1; i <= count; i++){
+    const at = Math.min(nb-1, Math.max(1, Math.round(i*nb/(count+1))));
+    if(out.indexOf(at) < 0) out.push(at);
+  }
+  return out;
+}
+function sortPicks(a){       // block numbers in order, "end" (after the last block) last
+  return a.slice().sort(function(x,y){ return (x==="end"?1e9:x) - (y==="end"?1e9:y); });
+}
+function longList(v){                     // custom picks: older saves stored a single number
+  if(typeof v === "number") return [v];
+  return Array.isArray(v) ? v : null;
+}
+function focusStats(steps){
+  const f = (steps||[]).filter(function(x){ return x.type === "focus"; });
+  return {n:f.length, min:f.reduce(function(a,x){ return a+x.min; }, 0)};
+}
+/* ---------- automatic break lengths ----------
+   Breaks scale with how much focus they follow. Anchors: 100 min of focus (25 x 4) gets
+   5-min short / 15-min long breaks; 120 min (e.g. 30 x 4, or a 2h plan) gets 8 / 18.
+   Beyond that they grow gently and level off at 10 / 30. A long block also earns at
+   least a fifth of itself as a short break (50-min block -> 10 min). */
+function aN(n){ return /^(8|11|18)/.test(String(n)) ? "an "+n : "a "+n; }   // "an 18-min", "a 15-min"
+function interp(pts, x){
+  if(x <= pts[0][0]) return pts[0][1];
+  for(let i = 1; i < pts.length; i++){
+    if(x <= pts[i][0]){
+      const a = pts[i-1], b = pts[i];
+      return a[1] + (b[1]-a[1]) * (x-a[0]) / (b[0]-a[0]);
+    }
+  }
+  return pts[pts.length-1][1];
+}
+function autoBreakLens(focusMin, blockMin){
+  const sh = interp([[0,5],[100,5],[120,8],[180,10]], focusMin);
+  const lo = interp([[0,15],[100,15],[120,18],[180,25],[240,30]], focusMin);
+  return {
+    short: Math.min(15, Math.max(Math.round(sh), Math.round((blockMin||25)/5))),
+    long:  Math.min(30, Math.max(Math.round(lo), Math.round((blockMin||25)*0.6)))
+  };
+}
+let BRK = null;                          // break lengths in force while a plan is being built
+function curBrk(){ return BRK || {short:Math.max(1,S.settings.short), long:Math.max(1,S.settings.long)}; }
+function pomoBreaks(){                   // what the Pomodoro cycle uses
+  const s = S.settings;
+  return s.autoBreaks ? autoBreakLens(s.work*Math.max(1,s.before), s.work) : {short:s.short, long:s.long};
+}
+function breakOf(steps){                 // the short / long lengths a built plan actually uses
+  const sh = (steps||[]).filter(function(x){ return x.type === "short"; })[0];
+  const lo = (steps||[]).filter(function(x){ return x.type === "long"; })[0];
+  return {short: sh ? sh.min : null, long: lo ? lo.min : null};
+}
+function buildPlan(totalMin, includeBreaks, even, opts){
+  if(!S.settings.autoBreaks){ BRK = null; return buildPlanLong(totalMin, includeBreaks, even, opts); }
+  // break length depends on focus time, and focus time depends on the breaks when they
+  // come out of the total, so settle it in a few passes
+  let lens = autoBreakLens(includeBreaks ? totalMin*0.85 : totalMin, S.settings.work), st = null;
+  try{
+    for(let i = 0; i < 4; i++){
+      BRK = lens;
+      st = buildPlanLong(totalMin, includeBreaks, even, opts);
+      if(!st) break;
+      const fs = focusStats(st);
+      const next = autoBreakLens(fs.min, fs.n ? fs.min/fs.n : S.settings.work);
+      if(next.short === lens.short && next.long === lens.long) break;
+      lens = next;
+    }
+  } finally { BRK = null; }
+  return st;
+}
+function buildPlanLong(totalMin, includeBreaks, even, opts){
+  opts = opts || {};
+  const longAt = opts.longAt === undefined ? "auto" : opts.longAt;
+  if(longAt === "auto"){
+    // build once without long breaks to see how big the session is, then place them;
+    // a long break can shift the block count, so settle it with one more pass
+    let st = buildPlanWith(totalMin, includeBreaks, even, opts.blocks, []);
+    if(!st) return null;
+    let fs = focusStats(st), spots = autoLongSpots(fs.n, fs.min);
+    if(!spots.length) return st;
+    st = buildPlanWith(totalMin, includeBreaks, even, opts.blocks, spots);
+    if(!st) return null;
+    const fs2 = focusStats(st);
+    if(fs2.n !== fs.n){
+      const spots2 = autoLongSpots(fs2.n, fs2.min);
+      st = buildPlanWith(totalMin, includeBreaks, even, opts.blocks, spots2) || st;
+    }
+    return st;
+  }
+  return buildPlanWith(totalMin, includeBreaks, even, opts.blocks, longAt === "none" ? [] : (longList(longAt) || []));
+}
+/* "end" in the picks means a long break after the last block. When breaks come out of
+   the time available, its minutes are set aside first so the plan still finishes on time. */
+function buildPlanWith(totalMin, includeBreaks, even, blocks, spots){
+  const LB = curBrk().long;
+  const endLong = spots.indexOf("end") >= 0;
+  const room = (endLong && includeBreaks && totalMin - LB >= 5) ? totalMin - LB : totalMin;
+  const st = buildPlanCore(room, includeBreaks, even, blocks, spots);
+  if(st && endLong) st.push({type:"long", min:LB});
+  return st;
+}
+function buildPlanCore(totalMin, includeBreaks, even, blocks, spots){
+  const s = S.settings;
+  const W = Math.max(5, s.work), SB = curBrk().short, LB = curBrk().long;
+  function longAfter(n){ return spots.indexOf(n) >= 0; }
+  const MIN = Math.min(10, W);            // shortest block worth starting
+  let left = Math.max(1, Math.round(totalMin)), steps = [], n = 0;
+
+  // The person picked how many focus blocks they want: split the focus time evenly across them
+  const B = Math.round(blocks || 0);
+  if(B >= 1){
+    const brs = [];
+    for(let i = 1; i < B; i++) brs.push(longAfter(i) ? {type:"long", min:LB} : {type:"short", min:SB});
+    const breakSum = brs.reduce(function(a,x){ return a + x.min; }, 0);
+    const focusTotal = includeBreaks ? left - breakSum : left;
+    if(focusTotal < B*5) return null;       // blocks would be shorter than 5 minutes
+    const base = Math.floor(focusTotal / B), extra = focusTotal - base*B;
+    for(let i = 0; i < B; i++){
+      steps.push({type:"focus", min: base + (i < extra ? 1 : 0)});
+      if(i < B-1) steps.push(brs[i]);
+    }
+    return steps;
+  }
+
+  if(left < MIN) return [{type:"focus", min:left}];
+
+  while(left >= MIN){
+    const len = Math.min(W, left);
+    steps.push({type:"focus", min:len});
+    n++; left -= len;
+    const isLong = longAfter(n);
+    const br = {type: isLong ? "long" : "short", min: isLong ? LB : SB};
+    if(includeBreaks){
+      if(left - br.min >= MIN){ steps.push(br); left -= br.min; } else break;
+    } else {
+      if(left >= MIN){ steps.push(br); } else break;
+    }
+  }
+  // what's left over: a few spare minutes get added to the last block, but a
+  // chunk big enough to work in gets its own break and block instead
+  if(left > 0){
+    const isLong = longAfter(n);
+    const br = {type: isLong ? "long" : "short", min: isLong ? LB : SB};
+    if(includeBreaks && left > 10 && left - br.min >= 5){
+      steps.push(br);
+      steps.push({type:"focus", min: left - br.min});
+    } else {
+      for(let i = steps.length-1; i >= 0; i--){
+        if(steps[i].type === "focus"){ steps[i].min += left; break; }
+      }
+    }
+  }
+  while(steps.length && steps[steps.length-1].type !== "focus") steps.pop();  // never end on a break
+
+  if(even){
+    const focus = steps.filter(function(x){ return x.type === "focus"; });
+    const tot = focus.reduce(function(a,x){ return a+x.min; }, 0);
+    const per = Math.max(5, Math.round(tot/focus.length));
+    focus.forEach(function(x, i){
+      x.min = i === focus.length-1 ? Math.max(5, tot - per*(focus.length-1)) : per;
+    });
+  }
+  return steps;
+}
+function planSteps(){ return (S.plan && S.plan.steps) || []; }
+function planDone(){ return S.plan ? S.plan.index >= S.plan.steps.length : true; }
+function planStep(){
+  const st = planSteps();
+  if(!st.length) return null;
+  return st[Math.min(S.plan.index, st.length-1)];
+}
+function planFocusLeft(){
+  return planSteps().slice(S.plan ? S.plan.index : 0)
+    .reduce(function(a,x){ return a + (x.type === "focus" ? x.min : 0); }, 0);
+}
+function planBlockNo(){
+  const st = planSteps();
+  let n = 0;
+  for(let i = 0; i <= Math.min(S.plan.index, st.length-1); i++) if(st[i].type === "focus") n++;
+  return n;
+}
+function planBlockTotal(){
+  return planSteps().filter(function(x){ return x.type === "focus"; }).length;
+}
+function startPlan(){
+  S.plan.index = 0;
+  T.mode = "plan"; S.mode = "plan";
+  T.phase = planSteps()[0].type;
+  T.running = false;
+  T.leftMs = totalMs();
+  save(); render();
+}
+
+/* The plan follows the settings live: any change in the panel rebuilds it straight
+   away, as long as you haven't started it yet (or it's finished). A plan that's
+   already running is left alone so a stray tap can't reshuffle your session. */
+function planFresh(){
+  return !S.plan || !planSteps().length || planDone() ||
+    (S.plan.index === 0 && !T.running && leftNow() >= totalMs());
+}
+function autoRebuild(){
+  if(T.mode !== "plan" || !planFresh()) return false;
+  const f = S.planForm, total = f.h*60 + f.m;
+  if(total < 5) return false;
+  const steps = buildPlan(total, f.includeBreaks, f.even, {blocks:f.blocks, longAt:f.longAt});
+  if(!steps) return false;
+  S.plan = {steps:steps, index:0, total:total, includeBreaks:f.includeBreaks, even:f.even, blocks:f.blocks,
+    longAt: Array.isArray(f.longAt) ? f.longAt.slice() : f.longAt};
+  T.phase = steps[0].type; T.running = false; T.leftMs = totalMs();
+  return true;
+}
+function planFormChanged(){ autoRebuild(); render(); }
+
+function phaseMinutes(){
+  const s = S.settings;
+  if(T.mode === "plan"){ const st = planStep(); return st ? st.min : s.work; }
+  if(T.mode === "custom") return s.custom;
+  if(T.mode === "animedoro") return T.phase === "focus" ? s.animeWork : s.animeBreak;
+  if(T.phase === "focus") return s.work;
+  if(T.phase === "short") return pomoBreaks().short;
+  return pomoBreaks().long;
+}
+function totalMs(){ return phaseMinutes()*60000; }
+function leftNow(){
+  if(T.mode === "stopwatch") return 0;
+  return T.running ? Math.max(0, T.endsAt - Date.now()) : T.leftMs;
+}
+function elapsedSw(){
+  return T.swBase + (T.running ? Date.now() - T.swStart : 0);
+}
+function resetToPhase(){
+  T.running = false;
+  T.leftMs = totalMs();
+  T.swBase = 0;
+  render();
+}
+function start(){
+  if(T.running) return;
+  ctx(); // unlock audio on the user gesture that started the session
+  if(T.mode === "plan"){
+    if(!planSteps().length){ openPanel("timer"); toast("Build a plan first"); return; }
+    if(planDone()){ S.plan.index = 0; T.phase = planSteps()[0].type; T.leftMs = totalMs(); }
+  }
+  T.running = true;
+  if(T.mode === "stopwatch"){ T.swStart = Date.now(); }
+  else { if(T.leftMs <= 0) T.leftMs = totalMs(); T.endsAt = Date.now() + T.leftMs; }
+  requestWakeLock();
+  render();
+}
+function pause(){
+  if(!T.running) return;
+  if(T.mode === "stopwatch") T.swBase = elapsedSw();
+  else T.leftMs = Math.max(0, T.endsAt - Date.now());
+  T.running = false;
+  releaseWakeLock();
+  render();
+}
+function toggle(){ T.running ? pause() : start(); }
+
+function logSession(type, minutes, taskId){
+  if(!(minutes > 0.05)) return;
+  const task = S.tasks.filter(function(t){ return t.id === taskId; })[0];
+  const row = {
+    id: Date.now()+"-"+Math.random().toString(36).slice(2,7),
+    date: dayKey(), at: Date.now(), type: type,
+    minutes: Math.round(minutes*10)/10,
+    taskId: taskId || null, taskName: task ? task.name : null
+  };
+  S.sessions.push(row);
+  if(type === "focus" && task){ task.pomos = (task.pomos||0)+1; }
+  save(); cloudLogSession(row);
+}
+
+/* Ends the current phase. `skipped` means the user cut it short, so only the
+   time actually spent is logged — not the full planned block. */
+function finish(skipped){
+  const spentMin = T.mode === "stopwatch"
+    ? elapsedSw()/60000
+    : (totalMs() - (skipped ? leftNow() : 0))/60000;
+  const wasFocus = (T.mode === "custom" || T.mode === "stopwatch") ? true : T.phase === "focus";
+  const planMode = T.mode === "plan";
+
+  logSession(wasFocus ? "focus" : "break", spentMin, wasFocus ? S.activeTaskId : null);
+  chime();
+  nextQuote();
+
+  if(T.mode === "stopwatch"){
+    T.running = false; T.swBase = 0; releaseWakeLock();
+    toast(spentMin >= .1 ? "Logged "+Math.round(spentMin)+" min" : "Stopwatch reset");
+    render(); return;
+  }
+  if(T.mode === "custom"){
+    T.running = false; T.leftMs = totalMs(); releaseWakeLock();
+    toast(skipped ? "Session ended early — time logged" : "Countdown complete. Nice work.");
+    render(); return;
+  }
+
+  if(planMode){
+    if(wasFocus) S.cycles += 1;
+    S.plan.index += 1;
+    T.running = false;
+    if(planDone()){
+      releaseWakeLock();
+      const total = planSteps().reduce(function(a,x){ return a + (x.type==="focus"?x.min:0); }, 0);
+      T.leftMs = 0;
+      toast("Plan finished — "+total+" minutes of focus. Done for the session.", 4000);
+    } else {
+      T.phase = planStep().type;
+      T.leftMs = totalMs();
+      const left = planBlockTotal() - planBlockNo() + (T.phase === "focus" ? 1 : 0);
+      toast(T.phase === "focus" ? "Block "+planBlockNo()+" of "+planBlockTotal()
+        : (T.phase === "long" ? "Long break" : "Short break")+(left > 0 ? " — "+left+" block"+(left===1?"":"s")+" to go" : " — last block done"));
+      if(S.settings.autoStart) setTimeout(start, 900); else releaseWakeLock();
+    }
+    save(); render(); return;
+  }
+
+  // pomodoro / animedoro cycle
+  if(T.phase === "focus"){
+    S.cycles += 1;
+    const before = T.mode === "animedoro" ? 99 : Math.max(1, S.settings.before);
+    if(S.cycles % before === 0){ T.phase = "long"; toast("Round done — take a long break."); }
+    else { T.phase = "short"; toast("Focus done — short break."); }
+  } else {
+    T.phase = "focus"; toast("Break's over. Back in.");
+  }
+  T.leftMs = totalMs();
+  T.running = false;
+  save();
+  if(S.settings.autoStart){ setTimeout(start, 900); } else { releaseWakeLock(); }
+  render();
+}
+
+function skip(){
+  if(T.mode === "stopwatch"){
+    if(elapsedSw() < 3000){ toast("Nothing to log yet"); return; }
+    pause(); finish(true); return;
+  }
+  const spent = totalMs() - leftNow();
+  pause();
+  if(spent < 3000 && T.mode !== "plan"){ // nothing meaningful spent — just jump the phase
+    if(T.mode === "custom"){ resetToPhase(); return; }
+    T.phase = T.phase === "focus" ? "short" : "focus";
+    resetToPhase(); return;
+  }
+  finish(true);
+}
+
+function setMode(m){
+  T.mode = m; S.mode = m;
+  T.running = false; T.swBase = 0;
+  if(m === "plan" && planSteps().length){
+    if(planDone()) S.plan.index = 0;
+    T.phase = planStep().type;
+  } else {
+    T.phase = "focus";
+  }
+  T.leftMs = totalMs();
+  save(); render();
+}
+function setPhase(p){
+  if(T.mode !== "pomodoro" && T.mode !== "animedoro") return;
+  T.phase = p; T.running = false; T.leftMs = totalMs(); render();
+}
+
+/* One tick drives everything. 250ms keeps the seconds crisp; the value shown is
+   always computed from Date.now(), so throttling or sleep can't desync it. */
+setInterval(function(){
+  if(T.running && T.mode !== "stopwatch" && Date.now() >= T.endsAt){ finish(false); return; }
+  if(T.running) paint();
+}, 250);
+document.addEventListener("visibilitychange", function(){
+  if(!document.hidden){ paint(); }
+  else if(T.running && shield.on){ shield.strays += 1; }
+});
+
+/* ============================ wake lock ============================ */
+let wakeLock = null;
+function requestWakeLock(){
+  if(!navigator.wakeLock || wakeLock) return;
+  navigator.wakeLock.request("screen").then(function(w){
+    wakeLock = w;
+    w.addEventListener("release", function(){ wakeLock = null; });
+  }).catch(function(){ /* not granted here; harmless */ });
+}
+function releaseWakeLock(){ if(wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock = null; } }
+
+/* ============================ focus shield ============================ */
+const shield = { on:false, strays:0, since:0 };
+function toggleShield(){
+  shield.on = !shield.on;
+  $("#btnShield").setAttribute("aria-pressed", String(shield.on));
+  if(shield.on){
+    shield.strays = 0; shield.since = Date.now();
+    const el = document.documentElement;
+    if(el.requestFullscreen) el.requestFullscreen().catch(function(){});
+    if(!T.running) start();
+    toast("Shield on. Leaving this tab gets counted.");
+  } else {
+    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+    toast(shield.strays === 0 ? "Shield off — zero stray tabs. Clean run." :
+      "Shield off — you left "+shield.strays+" time"+(shield.strays===1?"":"s")+".");
+  }
+  renderShield();
+}
+function renderShield(){
+  const box = $("#shield");
+  box.classList.toggle("on", shield.on && !T.running);
+  if(shield.on && !T.running){
+    $("#shieldTitle").textContent = "Shield on · timer paused";
+    $("#shieldBody").textContent = shield.strays
+      ? "You've left this tab "+shield.strays+" time"+(shield.strays===1?"":"s")+" this run. Press start to get back in."
+      : "Press start to get back in.";
+  }
+}
+
+/* ============================ stats ============================ */
+function focusOn(key){
+  return S.sessions.reduce(function(a,s){
+    return a + (s.date === key && s.type === "focus" ? s.minutes : 0); }, 0);
+}
+function streakCount(){
+  const days = {};
+  S.sessions.forEach(function(s){ if(s.type==="focus") days[s.date] = true; });
+  let n = 0, d = new Date();
+  if(!days[dayKey(d)]) d.setDate(d.getDate()-1);
+  while(days[dayKey(d)]){ n++; d.setDate(d.getDate()-1); }
+  return n;
+}
+/* Focus score blends how much of today's goal you hit (70) with how many of
+   today's focus blocks you saw through instead of skipping (30). */
+function focusScore(){
+  const key = dayKey();
+  const mins = focusOn(key);
+  const goal = Math.max(10, S.settings.goal);
+  const today = S.sessions.filter(function(s){ return s.date===key && s.type==="focus"; });
+  const full = today.filter(function(s){ return s.minutes >= S.settings.work*0.9; }).length;
+  const rate = today.length ? full/today.length : 0;
+  return Math.min(100, Math.round(Math.min(1, mins/goal)*70 + rate*30));
+}
+function seriesData(days){
+  const out = [];
+  for(let i = days-1; i >= 0; i--){
+    const d = shiftDay(-i), key = dayKey(d);
+    out.push({
+      key: key,
+      label: days <= 7 ? d.toLocaleDateString(undefined,{weekday:"short"}).slice(0,2) : String(d.getDate()),
+      min: Math.round(focusOn(key))
+    });
+  }
+  return out;
+}
+function barsSvg(data){
+  const w = 320, h = 128, pad = 20, gap = data.length > 10 ? 2 : 6;
+  const max = Math.max(30, Math.max.apply(null, data.map(function(d){ return d.min; })));
+  const bw = (w - pad*2 - gap*(data.length-1)) / data.length;
+  let bars = "", labels = "";
+  data.forEach(function(d, i){
+    const bh = Math.max(d.min > 0 ? 3 : 0, (d.min/max) * (h - 34));
+    const x = pad + i*(bw+gap), y = h - 18 - bh;
+    bars += '<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+
+      '" rx="'+Math.min(4,bw/2).toFixed(1)+'" fill="var(--accent)" opacity="'+(d.min?1:.25)+'"></rect>';
+    if(data.length <= 10 || i % 5 === 0){
+      labels += '<text x="'+(x+bw/2).toFixed(1)+'" y="'+(h-5)+'" text-anchor="middle" font-size="9.5" fill="rgba(255,255,255,.5)">'+esc(d.label)+'</text>';
+    }
+  });
+  const gl = [max, Math.round(max/2)].map(function(v){
+    const y = h - 18 - (v/max)*(h-34);
+    return '<line x1="'+pad+'" x2="'+(w-pad)+'" y1="'+y.toFixed(1)+'" y2="'+y.toFixed(1)+'" stroke="rgba(255,255,255,.1)" stroke-dasharray="3 3"/>'+
+      '<text x="2" y="'+(y+3).toFixed(1)+'" font-size="9" fill="rgba(255,255,255,.4)">'+v+'</text>';
+  }).join("");
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'" role="img" aria-label="Focus minutes per day">'+gl+bars+labels+'</svg>';
+}
+function ringSvg(score){
+  const r = 30, c = 2*Math.PI*r, off = c*(1-score/100);
+  return '<svg class="ring" width="76" height="76" viewBox="0 0 76 76" role="img" aria-label="Focus score '+score+' out of 100">'+
+    '<circle cx="38" cy="38" r="'+r+'" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="7"/>'+
+    '<circle cx="38" cy="38" r="'+r+'" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" '+
+    'stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 38 38)"/>'+
+    '<text x="38" y="43" text-anchor="middle" font-size="21" font-weight="800" fill="#fff">'+score+'</text></svg>';
+}
+
+/* ============================ music ============================ */
+function embedUrl(service, raw){
+  const url = (raw||"").trim();
+  if(!url) return null;
+  let m;
+  if(service === "spotify"){
+    m = url.match(/spotify:(playlist|album|track|artist|show|episode):([A-Za-z0-9]+)/) ||
+        url.match(/open\.spotify\.com\/(?:embed\/)?(?:intl-[a-z]{2}\/)?(?:user\/[^\/]+\/)?(playlist|album|track|artist|show|episode)\/([A-Za-z0-9]+)/);
+    return m ? "https://open.spotify.com/embed/"+m[1]+"/"+m[2] : null;
+  }
+  if(service === "youtube"){
+    // Playlist ids that start with RD/UL are auto-generated mixes: they can't be embedded as a
+    // series, so for those we fall back to the single video in the link.
+    const base = "https://www.youtube-nocookie.com/embed/";
+    const vid = url.match(/(?:youtu\.be\/|[?&]v=|youtube(?:-nocookie)?\.com\/(?:embed|shorts|live|v)\/)([A-Za-z0-9_-]{11})/);
+    const lst = url.match(/[?&]list=([A-Za-z0-9_-]+)/);
+    if(lst && !/^(RD|UL|TL)/.test(lst[1])) return base+(vid ? vid[1] : "videoseries")+"?list="+lst[1]+"&rel=0";
+    if(vid) return base+vid[1]+"?rel=0";
+    if(/^[A-Za-z0-9_-]{11}$/.test(url)) return base+url+"?rel=0";
+    return null;
+  }
+  if(service === "apple"){
+    m = url.match(/music\.apple\.com\/(.+)$/);
+    return m ? "https://embed.music.apple.com/"+m[1] : null;
+  }
+  return null;
+}
+function openMusic(){
+  const link = (S.music.links[S.music.service]||"").trim();
+  if(!link){ openPanel("music"); toast("Add a "+SERVICES[S.music.service].label+" link first"); return; }
+  window.open(link, "_blank", "noopener");
+}
+
+/* ============================ render ============================ */
+function nextQuote(){
+  $("#quote").textContent = "“"+QUOTES[Math.floor(Math.random()*QUOTES.length)]+"”";
+}
+function phaseLabel(){
+  if(T.mode === "stopwatch") return "Stopwatch";
+  if(T.mode === "custom") return "Countdown";
+  if(T.mode === "plan"){
+    if(!planSteps().length) return "No plan yet";
+    if(planDone()) return "Plan complete";
+    return T.phase === "focus" ? "Block "+planBlockNo()+" of "+planBlockTotal()
+      : (T.phase === "long" ? "Long break" : "Short break");
+  }
+  if(T.phase === "focus") return T.mode === "animedoro" ? "Episode block" : "Focus";
+  return T.phase === "short" ? "Short Break" : "Long Break";
+}
+/* ============================ timer faces ============================ */
+let faceKey = null, lastDigits = "";
+function buildFace(){
+  const k = FACES[S.settings.face] ? S.settings.face : "digital";
+  const el = $("#face");
+  faceKey = k; lastDigits = "";
+  const sz = S.settings.size;
+  if(k === "digital"){
+    el.innerHTML = '<div class="f-digital" id="fText">00:00</div>';
+    const d = $("#fText");
+    d.style.fontSize = "clamp(44px, "+sz+"px, 20vw)";
+    d.style.letterSpacing = S.settings.spacing+"em";
+  }
+  else if(k === "flip"){
+    el.innerHTML = '<div class="f-flip" id="fFlip"></div>';
+  }
+  else if(k === "line"){
+    el.innerHTML = '<div class="f-line"><div class="lt" id="fText">00:00</div>'+
+      '<div class="track"><span class="fill" id="fFill"></span><span class="dot" id="fDot" style="left:0%"></span></div>'+
+      '<div class="ends"><span id="fLeftEnd">Start</span><span id="fRightEnd"></span></div></div>';
+    $("#fText").style.fontSize = "clamp(40px, "+(sz*0.8)+"px, 17vw)";
+  }
+  else if(k === "ring"){
+    const R = 86, C = 2*Math.PI*R;
+    el.innerHTML = '<svg class="f-svg" viewBox="0 0 200 200" width="min(300px,72vw)" role="img" aria-label="Timer">'+
+      '<circle cx="100" cy="100" r="'+R+'" fill="none" stroke="var(--card)" stroke-width="9"/>'+
+      '<circle id="fArc" cx="100" cy="100" r="'+R+'" fill="none" stroke="var(--accent)" stroke-width="9" '+
+      'stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+C.toFixed(1)+
+      '" transform="rotate(-90 100 100)"/>'+
+      '<text id="fText" x="100" y="108" text-anchor="middle" fill="var(--text)" '+
+      'style="font-family:var(--timerFont);font-size:40px;font-weight:800;font-variant-numeric:tabular-nums">00:00</text>'+
+      '<text id="fSub" x="100" y="132" text-anchor="middle" fill="var(--sub)" '+
+      'style="font-size:11px;letter-spacing:.14em;text-transform:uppercase">focus</text></svg>';
+    el.dataset.circ = C;
+  }
+  else if(k === "analog"){
+    let ticks = "";
+    for(let i=0;i<60;i++){
+      const big = i%5===0, a = i*6*Math.PI/180;
+      const r1 = big?74:79, r2 = 84;
+      ticks += '<line x1="'+(100+r1*Math.sin(a)).toFixed(1)+'" y1="'+(100-r1*Math.cos(a)).toFixed(1)+
+        '" x2="'+(100+r2*Math.sin(a)).toFixed(1)+'" y2="'+(100-r2*Math.cos(a)).toFixed(1)+
+        '" stroke="var(--text)" stroke-width="'+(big?2.2:1)+'" opacity="'+(big?.75:.3)+'"/>';
+    }
+    let nums = "";
+    [0,15,30,45].forEach(function(m){
+      const a = m*6*Math.PI/180;
+      nums += '<text x="'+(100+62*Math.sin(a)).toFixed(1)+'" y="'+(100-62*Math.cos(a)+5).toFixed(1)+
+        '" text-anchor="middle" fill="var(--sub)" style="font-size:11px;font-weight:600">'+(m===0?60:m)+'</text>';
+    });
+    el.innerHTML = '<svg class="f-svg" viewBox="0 0 200 200" width="min(300px,72vw)" role="img" aria-label="Timer dial">'+
+      '<circle cx="100" cy="100" r="92" fill="var(--card)" stroke="var(--border)" stroke-width="1.5"/>'+
+      '<path id="fPie" d="" fill="var(--accent)" opacity=".4"/>'+ticks+nums+
+      '<line id="fHand" x1="100" y1="100" x2="100" y2="28" stroke="var(--accent)" stroke-width="3.4" stroke-linecap="round"/>'+
+      '<line id="fSec" x1="100" y1="106" x2="100" y2="34" stroke="var(--text)" stroke-width="1.2" opacity=".65" stroke-linecap="round"/>'+
+      '<circle cx="100" cy="100" r="5" fill="var(--text)"/>'+
+      '<text id="fText" x="100" y="150" text-anchor="middle" fill="var(--text)" '+
+      'style="font-family:var(--timerFont);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums">00:00</text></svg>';
+  }
+  // the separate bar under the timer would double up with these two faces
+  $("#bar").style.display = (k === "line" || k === "ring") ? "none" : "block";
+}
+function arcPath(frac){ // pie wedge from 12 o'clock, clockwise
+  if(frac <= 0) return "";
+  if(frac >= .9999) return "M100 100 m-72 0 a72 72 0 1 0 144 0 a72 72 0 1 0 -144 0";
+  const a = frac*2*Math.PI;
+  const x = 100 + 72*Math.sin(a), y = 100 - 72*Math.cos(a);
+  return "M100 100 L100 28 A72 72 0 "+(frac > .5 ? 1 : 0)+" 1 "+x.toFixed(2)+" "+y.toFixed(2)+" Z";
+}
+function paintFace(val, pct){
+  const k = faceKey;
+  if(k === "flip"){
+    const wrap = $("#fFlip"); if(!wrap) return;
+    if(val.length !== lastDigits.length){
+      const sz = S.settings.size;
+      wrap.innerHTML = val.split("").map(function(c,i){
+        return c === ":" ? '<span class="sep" style="font-size:'+Math.round(sz*.55)+'px">:</span>'
+          : '<span class="f-card" id="fd'+i+'" style="width:'+Math.round(sz*.72)+'px;height:'+Math.round(sz*1.02)+
+            'px;font-size:'+Math.round(sz*.72)+'px">'+c+'</span>';
+      }).join("");
+      lastDigits = val;
+      return;
+    }
+    for(let i=0;i<val.length;i++){
+      if(val[i] === lastDigits[i]) continue;
+      const card = document.getElementById("fd"+i);
+      if(card){
+        card.textContent = val[i];
+        card.classList.remove("turn"); void card.offsetWidth; card.classList.add("turn");
+      }
+    }
+    lastDigits = val;
+    return;
+  }
+  const t = $("#fText"); if(t) t.textContent = val;
+  if(k === "line"){
+    const f = $("#fFill"), d = $("#fDot"), r = $("#fRightEnd");
+    if(f){ f.style.width = pct+"%"; d.style.left = pct+"%"; }
+    if(r) r.textContent = T.mode === "stopwatch" ? "Counting up" : phaseMinutes()+" min";
+  }
+  else if(k === "ring"){
+    const arc = document.getElementById("fArc"), sub = document.getElementById("fSub");
+    if(arc){
+      const C = parseFloat($("#face").dataset.circ);
+      arc.setAttribute("stroke-dashoffset", (C*(1 - pct/100)).toFixed(1));
+    }
+    if(sub) sub.textContent = phaseLabel();
+  }
+  else if(k === "analog"){
+    const pie = document.getElementById("fPie"), hand = document.getElementById("fHand"), sec = document.getElementById("fSec");
+    const ms = T.mode === "stopwatch" ? elapsedSw() : leftNow();
+    const mins = ms/60000;
+    if(pie) pie.setAttribute("d", arcPath(Math.min(1, (mins%60)/60)));
+    if(hand) hand.setAttribute("transform", "rotate("+((mins%60)*6).toFixed(2)+" 100 100)");
+    if(sec) sec.setAttribute("transform", "rotate("+(((ms/1000)%60)*6).toFixed(2)+" 100 100)");
+  }
+}
+
+function paint(){ // cheap, runs every tick
+  const val = T.mode === "stopwatch" ? fmt(elapsedSw()) : fmt(leftNow());
+  const tot = totalMs();
+  const pct = Math.max(0, Math.min(100, T.mode === "stopwatch" ? 0 : tot ? (1 - leftNow()/tot)*100 : 0));
+  if(faceKey !== S.settings.face) buildFace();
+  paintFace(val, pct);
+  $("#barFill").style.width = pct+"%";
+  document.title = (T.running ? val+" · " : "")+phaseLabel()+" · Focusstudy";
+  if(pipDoc) paintPip();
+  if(vpip && document.pictureInPictureElement === vpip.video) vpipDraw();
+}
+function render(){
+  applyTheme(); applyFont(); applyScene();
+
+  // phase tabs
+  const tabs = $("#phaseTabs");
+  if(T.mode === "pomodoro" || T.mode === "animedoro"){
+    const items = T.mode === "animedoro"
+      ? [["focus","Episode block"],["short","Break"]]
+      : [["focus","Focus"],["short","Short Break"],["long","Long Break"]];
+    tabs.innerHTML = items.map(function(p){
+      return '<button data-phase="'+p[0]+'" aria-pressed="'+(T.phase===p[0])+'">'+esc(p[1])+'</button>';
+    }).join("");
+  } else {
+    tabs.innerHTML = '<button aria-pressed="true" disabled>'+esc(phaseLabel())+'</button>';
+  }
+
+  // progress markers: hearts for pomodoro, a proportional strip for a plan
+  const before = Math.max(1, S.settings.before);
+  if(T.mode === "plan"){
+    const st = planSteps();
+    $("#hearts").innerHTML = st.length ? '<div class="strip" title="Your session">'+st.map(function(x,i){
+      const state = i < S.plan.index ? "past" : (i === S.plan.index && !planDone() ? "now" : "next");
+      return '<span class="seg '+x.type+" "+state+'" style="flex:'+x.min+'" aria-hidden="true"></span>';
+    }).join("")+'</div>' : "";
+  } else if(T.mode === "pomodoro"){
+    const filled = S.cycles % before === 0 && S.cycles > 0 ? before : S.cycles % before;
+    let h = "";
+    for(let i=0;i<before;i++){
+      h += '<span style="opacity:'+(i<filled?1:.35)+'">'+ic("heart",17,i<filled?"currentColor":"none")+'</span>';
+    }
+    $("#hearts").innerHTML = h;
+  } else { $("#hearts").innerHTML = ""; }
+
+  // task chip
+  const task = S.tasks.filter(function(t){ return t.id === S.activeTaskId; })[0];
+  $("#taskChip").innerHTML = task
+    ? ic("star",14,"currentColor")+'<span class="nm">'+esc(task.name)+'</span><span class="ct">'+(task.pomos||0)+"/"+task.estimate+'</span>'
+    : '<span class="ct">No task selected — tap to choose</span>';
+
+  $("#prompt").textContent = T.mode === "stopwatch" ? "Just start the clock."
+    : (T.mode === "plan" && !planSteps().length) ? "How much time do you have?"
+    : task ? task.name : "What do you want to focus on?";
+
+  // controls
+  let goLabel = T.running ? "Pause"
+    : (leftNow() < totalMs() && T.mode !== "stopwatch" ? "Resume" : "Start");
+  if(T.mode === "plan"){
+    if(!planSteps().length) goLabel = "Build a plan";
+    else if(planDone()) goLabel = "Run it again";
+    else if(S.plan.index === 0 && leftNow() >= totalMs()) goLabel = "Start";
+  }
+  $("#btnGo").innerHTML = (T.running ? ic("pause",21,"currentColor") : ic("play",21,"currentColor"))+
+    "<span>"+goLabel+"</span>";
+
+  $("#hint").textContent = (T.mode === "plan" && planSteps().length && !planDone())
+    ? planFocusLeft()+" min of focus left in this plan · tap Plan to change it"
+    : "Space start / pause · R reset · S skip";
+  $("#btnSkip").style.display = T.mode === "stopwatch" ? "none" : "grid";
+
+  $("#streak").innerHTML = ic("flame",15,"currentColor")+streakCount();
+  renderShield();
+  paint();
+  if(panelName) renderPanel();
+  save();
+}
+
+/* ============================ panels ============================ */
+let panelName = null;
+function openPanel(name){
+  panelName = name;
+  $("#panel").classList.add("open");
+  $("#panel").setAttribute("aria-hidden","false");
+  document.querySelectorAll(".dockbtn[data-panel]").forEach(function(b){
+    b.setAttribute("aria-pressed", String(b.dataset.panel === name));
+  });
+  renderPanel();
+}
+function closePanel(){
+  panelName = null;
+  $("#panel").classList.remove("open");
+  $("#panel").setAttribute("aria-hidden","true");
+  document.querySelectorAll(".dockbtn[data-panel]").forEach(function(b){ b.setAttribute("aria-pressed","false"); });
+}
+function togglePanel(name){ panelName === name ? closePanel() : openPanel(name); }
+
+const TITLES = {tasks:"Tasks",routines:"Routines",music:"Music",timer:"Timer",
+  stats:"Statistics",sounds:"Ambient sound",themes:"Themes",account:"Account"};
+
+function renderPanel(){
+  $("#panelTitle").textContent = TITLES[panelName] || "";
+  $("#panelBody").innerHTML = ({
+    tasks:viewTasks, routines:viewRoutines, music:viewMusic, timer:viewTimer,
+    stats:viewStats, sounds:viewSounds, themes:viewThemes, account:viewAccount
+  }[panelName] || function(){ return ""; })();
+  if(panelName === "music") watchFrame();
+}
+
+/* If the host page's security policy refuses the player frame, show the open-in-a-new-tab card at once. */
+document.addEventListener("securitypolicyviolation", function(e){
+  if(!document.getElementById("musicFrame")) return;
+  if(!/frame|child/i.test(e.violatedDirective||"")) return;
+  const wrap = document.getElementById("frameWrap"), fb = document.getElementById("frameFallback");
+  if(wrap && fb){ wrap.hidden = true; fb.hidden = false; }
+});
+
+function viewAccount(){
+  const cfg = cloudCfg();
+
+  if(!cfg){
+    return '<div class="sect"><div class="box">'+
+      '<p style="margin:0 0 10px;font-size:13.5px;font-weight:600">No cloud account yet</p>'+
+      '<p class="note" style="margin:0">Everything you do is saved in this browser already. To log in from another device, connect a free Supabase project — it holds your account and your data, and only you can read it.</p>'+
+      '</div></div>'+
+      '<div class="sect"><p class="lbl">Connect a project</p><div class="box">'+
+      '<input class="txt" id="sbUrl" placeholder="https://yourproject.supabase.co" style="margin-bottom:9px">'+
+      '<input class="txt" id="sbKey" placeholder="anon public key">'+
+      '<button class="solid" data-act="sbSave" style="width:100%;margin-top:10px">Connect</button>'+
+      '<p class="note">Supabase dashboard → Settings → API. Use the <b>anon public</b> key, never the service_role one. Both values are safe in this page; the database rules are what keep your rows private.</p>'+
+      '</div></div>'+
+      '<div class="sect"><p class="lbl">Before that works</p><div class="box">'+
+      '<p class="note" style="margin:0 0 9px">Run the setup SQL once in your project (SQL Editor → New query). It makes two tables and locks each row to its owner.</p>'+
+      '<button class="ghost" data-act="showSql" style="width:100%">Show the SQL</button>'+
+      '<div id="sqlBox" hidden style="margin-top:9px"></div></div></div>';
+  }
+
+  if(!sb){
+    return '<div class="sect"><div class="box">'+
+      '<p style="margin:0 0 9px;font-size:13.5px;font-weight:600">Accounts aren\'t available here</p>'+
+      '<p class="note" style="margin:0">'+esc(cloudErr || "Still connecting…")+'</p>'+
+      '</div></div>'+
+      '<div class="sect"><button class="ghost" data-act="sbForget" style="width:100%">Disconnect this project</button></div>';
+  }
+
+  if(!me){
+    return '<div class="sect"><div class="box">'+
+      '<input class="txt" id="authEmail" type="email" autocomplete="email" placeholder="you@email.com" style="margin-bottom:9px">'+
+      '<input class="txt" id="authPass" type="password" autocomplete="current-password" placeholder="Password (6+ characters)">'+
+      '<div class="row" style="margin-top:11px">'+
+      '<button class="solid" data-act="login" style="flex:1">Log in</button>'+
+      '<button class="ghost" data-act="signup" style="flex:1">Sign up</button></div>'+
+      '<button class="ghost" data-act="forgot" style="width:100%;margin-top:9px">Forgot password</button>'+
+      (cloudErr ? '<p class="note" style="color:var(--bad);margin-top:10px">'+esc(cloudErr)+'</p>' : "")+
+      '</div><p class="note">Signing up mirrors what\'s already on this device to your account, so nothing you\'ve logged so far is lost.</p></div>';
+  }
+
+  const when = lastSync ? new Date(lastSync).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})
+    : (lastPush() ? new Date(lastPush()).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) : "not yet");
+  return '<div class="sect"><div class="box">'+
+    '<div class="row"><span class="sp">'+ic("user",17)+'</span></div>'+
+    '<p style="margin:8px 0 2px;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis">'+esc(me.email||"Signed in")+'</p>'+
+    '<p class="note" style="margin:0">'+(syncing ? "Syncing…" : "Last synced "+when)+'</p>'+
+    (cloudErr ? '<p class="note" style="color:var(--bad)">'+esc(cloudErr)+'</p>' : "")+
+    '<div class="row" style="margin-top:12px">'+
+    '<button class="solid" data-act="syncNow" style="flex:1">'+ic("sync",14)+' Sync now</button>'+
+    '<button class="ghost" data-act="logout">Log out</button></div></div></div>'+
+    '<div class="sect"><div class="box">'+
+    '<div class="row"><span class="sp" style="font-size:13px">Sessions stored</span><span class="mini">'+S.sessions.length+'</span></div>'+
+    '<div class="row"><span class="sp" style="font-size:13px">Tasks</span><span class="mini">'+S.tasks.length+'</span></div>'+
+    '<div class="row"><span class="sp" style="font-size:13px">Your themes</span><span class="mini">'+Object.keys(S.customThemes||{}).length+'</span></div>'+
+    '<p class="note">Your background picture stays on this device — it\'s too big to be worth syncing.</p></div></div>'+
+    '<div class="sect"><button class="ghost" data-act="wipeCloud" style="width:100%">Delete my cloud copy</button>'+
+    '<p class="note">Removes your rows from the database. This device keeps its own copy, and your login still works.</p></div>';
+}
+
+const SETUP_SQL = [
+"-- Focusstudy setup. Run once in Supabase → SQL Editor → New query.",
+"",
+"create table if not exists public.app_state (",
+"  user_id    uuid primary key references auth.users on delete cascade,",
+"  data       jsonb not null default '{}'::jsonb,",
+"  updated_at timestamptz not null default now()",
+");",
+"alter table public.app_state enable row level security;",
+"",
+"create policy \"read own state\"   on public.app_state for select using (auth.uid() = user_id);",
+"create policy \"insert own state\" on public.app_state for insert with check (auth.uid() = user_id);",
+"create policy \"update own state\" on public.app_state for update using (auth.uid() = user_id) with check (auth.uid() = user_id);",
+"create policy \"delete own state\" on public.app_state for delete using (auth.uid() = user_id);",
+"",
+"create table if not exists public.sessions (",
+"  id        text not null,",
+"  user_id   uuid not null references auth.users on delete cascade,",
+"  date      date not null,",
+"  type      text not null check (type in ('focus','break')),",
+"  minutes   numeric(7,1) not null check (minutes >= 0),",
+"  task_name text,",
+"  at        timestamptz not null default now(),",
+"  primary key (user_id, id)",
+");",
+"create index if not exists sessions_user_date on public.sessions (user_id, date);",
+"alter table public.sessions enable row level security;",
+"",
+"create policy \"read own sessions\"   on public.sessions for select using (auth.uid() = user_id);",
+"create policy \"insert own sessions\" on public.sessions for insert with check (auth.uid() = user_id);",
+"create policy \"update own sessions\" on public.sessions for update using (auth.uid() = user_id) with check (auth.uid() = user_id);",
+"create policy \"delete own sessions\" on public.sessions for delete using (auth.uid() = user_id);"
+].join("\n");
+
+function viewTasks(){
+  const list = S.tasks.length ? S.tasks.map(function(t){
+    return '<div class="task'+(t.done?" done":"")+'">'+
+      '<button data-act="doneTask" data-id="'+t.id+'" aria-label="Toggle done">'+ic(t.done?"check":"circle",19)+'</button>'+
+      '<div class="sp"><div class="nm'+(t.done?" strike":"")+'">'+esc(t.name)+'</div>'+
+      '<div class="sub">'+(t.pomos||0)+" / "+t.estimate+" blocks</div></div>"+
+      '<button data-act="pickTask" data-id="'+t.id+'" aria-label="Set as active">'+
+        ic("star",17,S.activeTaskId===t.id?"currentColor":"none")+'</button>'+
+      '<button data-act="delTask" data-id="'+t.id+'" aria-label="Delete">'+ic("trash",17)+'</button></div>';
+  }).join("") : '<p class="note" style="text-align:center;padding:22px 0">No tasks yet. Add one and every focus block you finish gets counted against it.</p>';
+
+  return '<div class="sect"><div class="box" style="display:flex;gap:8px;align-items:center">'+
+    '<input class="txt" id="taskName" placeholder="What are you working on?" style="flex:1">'+
+    '<input class="num" id="taskEst" type="number" min="1" max="30" value="1" title="Estimated blocks">'+
+    '<button class="solid" data-act="addTask" aria-label="Add task">'+ic("plus",16)+'</button></div></div>'+
+    '<div class="sect">'+list+'</div>';
+}
+
+function viewRoutines(){
+  const now = new Date(), mins = now.getHours()*60+now.getMinutes();
+  const rows = S.routines.map(function(r){
+    let up = "";
+    if(r.at){
+      const p = r.at.split(":"), m = (+p[0])*60 + (+p[1]);
+      if(mins >= m - 15 && mins <= m + 75) up = '<span class="badge">now</span>';
+    }
+    const detail = r.mode === "stopwatch" ? "Open-ended"
+      : r.mode === "plan" ? fmtHM(r.planTotal||100)+" split into blocks"
+      : r.mode === "custom" ? r.custom+" min countdown"
+      : r.work+" / "+r.short+" min"+(r.mode==="pomodoro" ? " · long break every "+r.before : "");
+    return '<button class="routine" data-act="runRoutine" data-id="'+r.id+'">'+
+      ic(r.mode==="stopwatch"?"clock":"repeat",18)+
+      '<span class="sp"><span style="display:block;font-size:13.5px;font-weight:600">'+esc(r.name)+'</span>'+
+      '<span class="sub" style="display:block">'+esc(detail)+(r.at?" · "+esc(r.at):"")+'</span></span>'+up+'</button>';
+  }).join("");
+  return '<div class="sect"><p class="lbl">Saved routines</p>'+rows+
+    '<p class="note">Tapping a routine loads its mode and lengths, then starts it. The <b>now</b> badge appears around the time you usually run it.</p></div>'+
+    '<div class="sect"><p class="lbl">Save current setup</p><div class="box">'+
+    '<input class="txt" id="routineName" placeholder="Name it (e.g. Tax law revision)">'+
+    '<div class="row" style="margin-top:9px"><span class="mini">Usual time (optional)</span>'+
+    '<input class="num" id="routineAt" type="time" style="width:110px"></div>'+
+    '<button class="solid" data-act="saveRoutine" style="width:100%;margin-top:10px">Save routine</button></div></div>';
+}
+
+function viewMusic(){
+  const svc = S.music.service;
+  const link = S.music.links[svc] || "";
+  const emb = embedUrl(svc, link);
+  const picker = Object.keys(SERVICES).map(function(k){
+    return '<button class="pill" data-act="svc" data-k="'+k+'" aria-pressed="'+(svc===k)+'">'+SERVICES[k].label+'</button>';
+  }).join("");
+  const player = emb
+    ? '<div class="frame" id="frameWrap"><iframe id="musicFrame" src="'+esc(emb)+'" height="'+(svc==="youtube"?200:(svc==="apple"?175:152))+
+      '" allow="autoplay; encrypted-media; clipboard-write; picture-in-picture" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen title="'+SERVICES[svc].label+' player"></iframe></div>'+
+      '<div id="frameFallback" hidden><div class="box"><p style="margin:0 0 9px;font-size:13px">Embedded players are blocked in this preview frame.</p>'+
+      '<button class="solid" data-act="openMusic" style="width:100%">Open in '+SERVICES[svc].label+' '+ic("out",14)+'</button></div></div>'
+    : (link ? '<p class="note">That link doesn\'t look like a '+SERVICES[svc].label+' playlist, album or track. Expected: '+esc(SERVICES[svc].hint)+'</p>' : "");
+
+  return '<div class="sect"><p class="lbl">Service</p><div class="grid3">'+picker+'</div></div>'+
+    '<div class="sect"><p class="lbl">'+SERVICES[svc].label+' link</p><div class="box">'+
+    '<input class="txt" id="musicLink" value="'+esc(link)+'" placeholder="'+esc(SERVICES[svc].hint)+'">'+
+    '<div class="row" style="margin-top:9px">'+
+    '<button class="solid" data-act="saveMusic" style="flex:1">Load</button>'+
+    '<button class="ghost" data-act="openMusic">Open '+ic("out",13)+'</button></div></div></div>'+
+    (player ? '<div class="sect">'+player+'</div>' : "")+
+    '<p class="note">Each service keeps its own saved link, so you can switch without re-pasting. Playback is controlled in the player itself — this app never pauses your music, only the timer.</p>';
+}
+
+function viewSounds(){
+  const grid = Object.keys(SOUNDS).map(function(k){
+    const s = SOUNDS[k];
+    return '<button class="pill" data-act="sound" data-k="'+k+'" aria-pressed="'+(S.settings.sound===k && S.settings.soundOn)+
+      '" style="display:flex;flex-direction:column;gap:6px;padding:12px 8px"><span style="font-size:20px">'+s.emoji+'</span>'+esc(s.label)+'</button>';
+  }).join("");
+  return '<div class="sect"><p class="lbl">Generated soundscapes</p><div class="grid2">'+grid+'</div></div>'+
+    '<div class="sect"><div class="box">'+
+    '<div class="row"><span style="font-size:13.5px">Playing</span>'+
+    '<button class="pill" data-act="toggleSound" aria-pressed="'+S.settings.soundOn+'" style="min-width:66px">'+(S.settings.soundOn?"On":"Off")+'</button></div>'+
+    '<div class="row" style="margin-top:12px">'+ic("mute",14)+
+    '<input type="range" min="0" max="1" step="0.05" value="'+S.settings.volume+'" data-act="volume" style="flex:1">'+ic("vol",14)+'</div></div>'+
+    '<div class="box" style="margin-top:9px"><div class="row"><span style="font-size:13.5px">Chime at the end of a block</span>'+
+    '<button class="pill" data-act="toggleChime" aria-pressed="'+S.settings.chime+'" style="min-width:66px">'+(S.settings.chime?"On":"Off")+'</button></div></div>'+
+    '<p class="note">These are generated live in the browser, not downloaded — no files, no buffering. Ocean adds a slow swell to the deep hum.</p></div>';
+}
+
+function viewTimer(){
+  const modes = Object.keys(MODES).map(function(k){
+    return '<button class="pill" data-act="mode" data-k="'+k+'" aria-pressed="'+(T.mode===k)+'">'+MODES[k].label+'</button>';
+  }).join("");
+  const fonts = Object.keys(FONTS).map(function(k){
+    return '<button class="pill" data-act="font" data-k="'+k+'" aria-pressed="'+(S.settings.font===k)+
+      '" style="display:flex;flex-direction:column;gap:3px;padding:11px 6px">'+
+      '<span style="font-family:'+FONTS[k].family+';font-size:17px;font-weight:700;font-variant-numeric:tabular-nums">25:00</span>'+
+      '<span style="font-size:11px;opacity:.75">'+FONTS[k].label+'</span></button>';
+  }).join("");
+
+  let fields = "";
+  if(T.mode === "plan"){
+    fields = planBuilder();
+  } else if(T.mode === "pomodoro"){
+    const pb = pomoBreaks(), sf = S.settings;
+    fields = [["work","Focus length (min)"],["before","Blocks before a long break"]].map(numRow).join("")+
+      '<div class="box" style="margin-bottom:8px"><div class="row"><span class="sp" style="font-size:13.5px">Break lengths</span>'+
+      '<button class="pill" data-act="autoBreaks" aria-pressed="'+!!sf.autoBreaks+'" style="min-width:90px">'+(sf.autoBreaks?"Auto":"My lengths")+'</button></div>'+
+      (sf.autoBreaks
+        ? '<p class="note">'+sf.work+' min × '+sf.before+' blocks = '+(sf.work*sf.before)+' min of focus, so '+pb.short+
+          '-min short breaks and '+aN(pb.long)+'-min long break.</p>'
+        : '<p class="note">Set your own below.</p>')+'</div>'+
+      (sf.autoBreaks ? "" : [["short","Short break (min)"],["long","Long break (min)"]].map(numRow).join(""));
+  } else if(T.mode === "animedoro"){
+    fields = [["animeWork","Episode block (min)"],["animeBreak","Reward break (min)"]].map(numRow).join("");
+  } else if(T.mode === "custom"){
+    fields = numRow(["custom","Duration (min)"]);
+  } else {
+    fields = '<p class="note" style="margin:0">The stopwatch counts up with no end point — good for gym sets or open-ended reading. Press skip to stop and log the time.</p>';
+  }
+
+  return '<div class="sect"><p class="lbl">Mode</p><div class="grid2">'+modes+'</div>'+
+    '<p class="note">'+(T.mode==="animedoro"
+      ? "Animedoro: a long focus block, then a break long enough for an actual episode. Good for days when 25 minutes keeps breaking your flow."
+      : T.mode==="pomodoro" ? "Classic cycle with short breaks and a longer one after a set number of blocks."
+      : T.mode==="plan" ? "Tell it how long you have. It splits the time into blocks and breaks and runs them back to back."
+      : T.mode==="custom" ? "One block, one length, no cycle."
+      : "Counts up instead of down.")+'</p></div>'+
+    '<div class="sect"><p class="lbl">'+(T.mode==="plan"?"Your session":"Lengths")+'</p>'+fields+'</div>'+
+    '<div class="sect"><div class="box"><div class="row"><span style="font-size:13.5px">Auto-start the next block</span>'+
+    '<button class="pill" data-act="toggleAuto" aria-pressed="'+S.settings.autoStart+'" style="min-width:66px">'+(S.settings.autoStart?"On":"Off")+'</button></div></div></div>'+
+    '<div class="sect"><p class="lbl">Timer font</p><div class="grid3">'+fonts+'</div></div>'+
+    '<div class="sect"><div class="box">'+
+    '<div class="row"><span class="mini">Size</span><span class="mini">'+S.settings.size+'px</span></div>'+
+    '<input type="range" min="44" max="170" step="2" value="'+S.settings.size+'" data-act="size">'+
+    '<div class="row" style="margin-top:8px"><span class="mini">Letter spacing</span><span class="mini">'+S.settings.spacing.toFixed(2)+'em</span></div>'+
+    '<input type="range" min="0" max="0.4" step="0.02" value="'+S.settings.spacing+'" data-act="spacing"></div></div>';
+}
+function planBuilder(){
+  const f = S.planForm;
+  const total0 = f.h*60 + f.m;
+  // how many blocks the plan has right now (needed for the "long break after block" choices)
+  let nBlocks = f.blocks;
+  if(!nBlocks){
+    const probe = buildPlan(Math.max(5,total0), f.includeBreaks, f.even, {blocks:0, longAt:f.longAt});
+    nBlocks = probe ? probe.filter(function(x){ return x.type === "focus"; }).length : 1;
+  }
+  // Long break: Auto (sized to the session), Custom (tap the blocks), or None
+  const cur = buildPlan(Math.max(5,total0), f.includeBreaks, f.even, {blocks:f.blocks, longAt:f.longAt});
+  const curFs = focusStats(cur), curB = breakOf(cur);
+  const est = S.settings.autoBreaks ? autoBreakLens(curFs.min, curFs.n ? curFs.min/curFs.n : S.settings.work)
+    : {short:S.settings.short, long:S.settings.long};
+  const LB = curB.long || est.long, SBm = curB.short || est.short;
+  const breakToggle = '<div class="row" style="margin-top:12px"><span class="sp" style="font-size:13px">Break lengths</span>'+
+    '<button class="pill" data-act="autoBreaks" aria-pressed="'+!!S.settings.autoBreaks+'" style="min-width:90px">'+
+    (S.settings.autoBreaks ? "Auto" : "My lengths")+'</button></div>'+
+    '<p class="note" style="margin-top:5px">'+(S.settings.autoBreaks
+      ? "Sized to "+curFs.min+" min of focus: "+SBm+"-min short breaks, "+aN(LB)+"-min long break. More focus time means longer breaks."
+      : "Using your Pomodoro lengths: "+S.settings.short+"-min short, "+S.settings.long+"-min long. Tap to let it size them for you.")+'</p>';
+  let picks0 = longList(f.longAt);
+  if(picks0){                              // drop picks that no longer exist after the plan shrank
+    picks0 = sortPicks(picks0.filter(function(i){ return i === "end" || (i >= 1 && i < nBlocks); }));
+    f.longAt = picks0;
+  }
+  const longMode = f.longAt === "none" ? "none" : (picks0 ? "custom" : "auto");
+  function blockList(arr){
+    const nums = arr.filter(function(x){ return x !== "end"; }), end = arr.indexOf("end") >= 0;
+    const a = !nums.length ? "" : nums.length === 1 ? "block "+nums[0]
+      : "blocks "+nums.slice(0,-1).join(", ")+" and "+nums[nums.length-1];
+    return a && end ? a+", and after the last block" : (end ? "the last block" : a);
+  }
+  function longWhere(arr, nb){
+    const nums = arr.filter(function(x){ return x !== "end"; }), end = arr.indexOf("end") >= 0;
+    const parts = [];
+    if(nums.length) parts.push(blockList(nums)+" of "+nb);
+    if(end) parts.push("the last block");
+    return parts.join(" and after ");
+  }
+  let longUI = "", longNote;
+  {
+    longUI = '<div class="seg2" style="margin:8px 0 0">'+
+      [["auto","Auto"],["custom","Custom"],["none","None"]].map(function(o){
+        return '<button data-act="longMode" data-k="'+o[0]+'" aria-pressed="'+(longMode===o[0])+'">'+o[1]+'</button>';
+      }).join("")+'</div>';
+    if(longMode === "custom"){
+      let picks = "";
+      for(let i = 1; i < nBlocks; i++){
+        picks += '<button class="pill" data-act="longAfter" data-n="'+i+'" aria-pressed="'+(picks0.indexOf(i)>=0)+
+          '" style="min-width:36px;padding:6px 0">'+i+'</button>';
+      }
+      picks += '<button class="pill" data-act="longAfter" data-n="end" aria-pressed="'+(picks0.indexOf("end")>=0)+
+        '" style="padding:6px 10px">Last</button>';
+      longUI += '<div class="row" style="margin-top:10px;align-items:flex-start"><span class="mini" style="padding-top:7px;flex:none">After block</span>'+
+        '<span style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end">'+picks+'</span></div>';
+      longNote = picks0.length
+        ? LB+"-min long break after "+longWhere(picks0, nBlocks)+". Other breaks are "+SBm+" min. Tap to add or remove."
+        : "Tap the blocks you want a long break after. You can pick more than one.";
+    } else if(longMode === "none"){
+      longNote = "No long break. Every break between blocks is "+SBm+" min.";
+    } else {
+      // show what Auto actually decided for this session
+      const ap = buildPlan(Math.max(5,total0), f.includeBreaks, f.even, {blocks:f.blocks, longAt:"auto"});
+      const spots = [];
+      if(ap){ let c = 0; ap.forEach(function(x){ if(x.type === "focus") c++; else if(x.type === "long") spots.push(c); }); }
+      longNote = spots.length
+        ? "For this session: "+LB+"-min long break after "+blockList(spots)+" of "+nBlocks+"."
+        : "This session is short, so it's "+SBm+"-min breaks only. Auto adds a long break once you plan "+AUTO_LONG_MIN+"+ min of focus.";
+    }
+  }
+  let blockHint = "Automatic: blocks are "+S.settings.work+" min, with the last one absorbing what's left.";
+  if(f.blocks){
+    const t = buildPlan(Math.max(5,total0), f.includeBreaks, false, {blocks:f.blocks, longAt:f.longAt});
+    if(!t) blockHint = "That many blocks won't fit in this time (each needs at least 5 min). Try fewer blocks or more time.";
+    else { const fm = t.filter(function(x){ return x.type==="focus"; }); const lo = Math.min.apply(null, fm.map(function(x){return x.min;})), hi = Math.max.apply(null, fm.map(function(x){return x.min;}));
+      blockHint = f.blocks+" focus block"+(f.blocks>1?"s":"")+" of "+(lo===hi? lo : lo+"–"+hi)+" min each, divided evenly."; }
+  }
+  const presets = [[0,45],[1,0],[1,30],[2,0],[3,0]].map(function(p){
+    const on = f.h === p[0] && f.m === p[1];
+    return '<button class="pill" data-act="planPreset" data-h="'+p[0]+'" data-m="'+p[1]+'" aria-pressed="'+on+'" style="padding:6px 4px">'+
+      (p[0]?p[0]+"h":"")+(p[1]?(p[0]?" ":"")+p[1]+"m":"")+'</button>';
+  }).join("");
+
+  const steps = planSteps();
+  let preview = '<p class="note" style="margin:0">Set a length, then build it.</p>';
+  if(steps.length){
+    const focusMin = steps.reduce(function(a,x){ return a + (x.type==="focus"?x.min:0); }, 0);
+    const breakMin = steps.reduce(function(a,x){ return a + (x.type!=="focus"?x.min:0); }, 0);
+    const rows = steps.map(function(x,i){
+      const done = i < S.plan.index, now = i === S.plan.index && !planDone();
+      const name = x.type==="focus" ? "Focus block" : (x.type==="long" ? "Long break" : "Short break");
+      return '<div class="row" style="font-size:12.5px;opacity:'+(done?.45:1)+'">'+
+        '<span class="sp">'+(done?"✓ ":now?"▸ ":"&nbsp;&nbsp;")+esc(name)+'</span>'+
+        '<span class="mini">'+x.min+' min</span></div>';
+    }).join("");
+    preview = rows +
+      '<div class="row" style="margin-top:11px;padding-top:9px;border-top:1px solid rgba(255,255,255,.12);font-size:12.5px">'+
+      '<span class="sp" style="font-weight:700">'+planBlockTotal()+' blocks · '+focusMin+' min focus</span>'+
+      '<span class="mini">'+breakMin+' min breaks · '+(focusMin+breakMin)+' min total</span></div>';
+  }
+
+  return '<div class="box">'+
+    '<div class="row"><span style="font-size:13.5px">Time available</span><span>'+
+    '<input class="num" type="number" min="0" max="12" value="'+f.h+'" data-act="planH" style="width:54px"> <span class="mini">h</span> '+
+    '<input class="num" type="number" min="0" max="59" step="5" value="'+f.m+'" data-act="planM" style="width:54px"> <span class="mini">m</span></span></div>'+
+    '<div class="grid3" style="grid-template-columns:repeat(5,1fr);margin-top:10px">'+presets+'</div>'+
+    '<div class="row" style="margin-top:12px"><span class="sp" style="font-size:13px">Focus blocks <span class="mini">(0 = auto)</span></span>'+
+    '<input class="num" type="number" min="0" max="12" value="'+f.blocks+'" data-act="planBlocks" style="width:54px"></div>'+
+    '<p class="note" style="margin-top:5px">'+blockHint+'</p>'+
+    '<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1)">'+
+    '<div class="row"><span class="sp" style="font-size:13px">Long break</span><span class="mini">'+LB+' min</span></div>'+
+    longUI+
+    '<p class="note" style="margin-top:7px">'+longNote+'</p></div>'+
+    breakToggle+
+    '<div class="row" style="margin-top:12px"><span class="sp" style="font-size:13px">Breaks come out of that time</span>'+
+    '<button class="pill" data-act="planBreaks" aria-pressed="'+f.includeBreaks+'" style="min-width:60px">'+(f.includeBreaks?"Yes":"No")+'</button></div>'+
+    '<p class="note" style="margin-top:5px">'+(f.includeBreaks
+      ? "Everything fits inside "+fmtHM(f.h*60+f.m)+", breaks included — you finish on time."
+      : fmtHM(f.h*60+f.m)+" of actual focus, with breaks added on top.")+'</p>'+
+    (f.blocks ? '' :
+    '<div class="row" style="margin-top:12px"><span class="sp" style="font-size:13px">Even out the blocks</span>'+
+    '<button class="pill" data-act="planEven" aria-pressed="'+f.even+'" style="min-width:60px">'+(f.even?"Yes":"No")+'</button></div>'+
+    '<p class="note" style="margin-top:5px">Off: keeps your '+S.settings.work+'-minute blocks and lets the last one be short. On: spreads the time evenly so every block is the same length.</p>')+
+    (planFresh() && steps.length
+      ? '<p class="note" style="margin-top:12px;text-align:center">The plan below updates as you change these.</p>'
+      : '<button class="solid" data-act="planBuild" style="width:100%;margin-top:12px">'+(steps.length ? "Restart with these settings" : "Build the plan")+'</button>')+
+    '</div>'+
+    '<div class="box" style="margin-top:9px">'+preview+'</div>'+
+    (steps.length ? '<div class="row" style="margin-top:9px">'+
+      '<button class="solid" data-act="planStart" style="flex:1">Start from block 1</button>'+
+      '<button class="ghost" data-act="planClear">Clear</button></div>' : "")+
+    '<p class="note">Focus blocks are '+S.settings.work+' min (set under Pomodoro). '+(S.settings.autoBreaks
+      ? "Break lengths are worked out from the session's focus time."
+      : "Breaks use your Pomodoro lengths.")+'</p>';
+}
+function fmtHM(min){
+  const h = Math.floor(min/60), m = min%60;
+  return (h? h+"h":"")+(m? (h?" ":"")+m+"m" : (h?"":"0m"));
+}
+
+function numRow(f){
+  return '<div class="box" style="margin-bottom:8px"><div class="row"><span style="font-size:13.5px">'+f[1]+'</span>'+
+    '<input class="num" type="number" min="1" max="240" value="'+S.settings[f[0]]+'" data-act="num" data-k="'+f[0]+'"></div></div>';
+}
+
+let statRange = 7;
+function viewStats(){
+  const key = dayKey();
+  const todayMin = Math.round(focusOn(key));
+  const todayCount = S.sessions.filter(function(s){ return s.date===key && s.type==="focus"; }).length;
+  const totalMin = S.sessions.reduce(function(a,s){ return a + (s.type==="focus"?s.minutes:0); }, 0);
+  const breakMin = S.sessions.reduce(function(a,s){ return a + (s.type==="break"?s.minutes:0); }, 0);
+  const done = S.tasks.filter(function(t){ return t.done; }).length;
+  const score = focusScore();
+  const data = seriesData(statRange);
+  const avg = Math.round(data.reduce(function(a,d){ return a+d.min; },0) / data.length);
+
+  const recent = S.sessions.slice(-6).reverse().map(function(s){
+    const d = new Date(s.at||Date.now());
+    return '<div class="row" style="font-size:12.5px"><span class="sp" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+
+      (s.type==="focus" ? esc(s.taskName || "Focus") : "Break")+'</span>'+
+      '<span class="mini">'+Math.round(s.minutes)+'m · '+pad(d.getHours())+":"+pad(d.getMinutes())+'</span></div>';
+  }).join("") || '<p class="note" style="margin:0">Nothing logged yet.</p>';
+
+  return '<div class="sect"><div class="box scorewrap">'+ringSvg(score)+
+    '<div class="sp"><div style="font-size:13.5px;font-weight:700">Focus score today</div>'+
+    '<p class="note" style="margin-top:4px">'+todayMin+' of '+S.settings.goal+' goal minutes, and how many blocks you ran to the end.</p>'+
+    '<div class="row" style="margin-top:8px"><span class="mini">Daily goal</span>'+
+    '<input class="num" type="number" min="10" max="900" step="10" value="'+S.settings.goal+'" data-act="goal"></div></div></div></div>'+
+
+    '<div class="sect"><div class="grid2">'+
+    '<div class="stat"><div class="k">Today</div><div class="v">'+todayMin+'m</div></div>'+
+    '<div class="stat"><div class="k">Blocks today</div><div class="v">'+todayCount+'</div></div>'+
+    '<div class="stat"><div class="k">All time</div><div class="v">'+(Math.round(totalMin/6)/10)+'h</div></div>'+
+    '<div class="stat"><div class="k">Tasks done</div><div class="v">'+done+'</div></div>'+
+    '</div></div>'+
+
+    '<div class="sect"><div class="box">'+
+    '<div class="row" style="margin-bottom:8px"><span class="lbl" style="margin:0">Focus minutes</span>'+
+    '<span style="display:flex;gap:6px">'+
+    '<button class="pill" data-act="range" data-k="7" aria-pressed="'+(statRange===7)+'" style="padding:4px 10px">7d</button>'+
+    '<button class="pill" data-act="range" data-k="30" aria-pressed="'+(statRange===30)+'" style="padding:4px 10px">30d</button></span></div>'+
+    barsSvg(data)+
+    '<p class="note">Average '+avg+' min a day over this window. Breaks logged: '+Math.round(breakMin)+' min.</p></div></div>'+
+
+    '<div class="sect"><p class="lbl">Recent</p><div class="box">'+recent+'</div></div>'+
+    '<div class="sect"><button class="ghost" data-act="exportData" style="width:100%">Show my data as JSON</button>'+
+    '<div id="exportBox" hidden style="margin-top:9px"></div>'+
+    '<p class="note">Everything lives in this browser only. Copy this out if you plan to clear site data or move to another machine.</p></div>';
+}
+
+let themeTab = "packs";
+function viewThemes(){
+  const tabs = [["packs","Theme packs"],["make","Make your own"],["scene","Backgrounds"]].map(function(t){
+    return '<button data-act="themeTab" data-k="'+t[0]+'" aria-pressed="'+(themeTab===t[0])+'">'+t[1]+'</button>';
+  }).join("");
+  return '<div class="seg2">'+tabs+'</div>'+
+    (themeTab === "packs" ? themePacks() : themeTab === "make" ? themeMaker() : sceneView());
+}
+function themePacks(){
+  const mine = Object.keys(S.customThemes||{});
+  const card = function(k, th, own){
+    return '<div style="position:relative">'+
+      '<button class="swatch" data-act="theme" data-k="'+k+'" aria-pressed="'+(S.theme===k)+'" style="width:100%">'+
+      '<span class="sw" style="display:block;background:'+th.bg+'"></span>'+
+      '<span class="nm" style="display:block">'+esc(th.name)+'</span></button>'+
+      (own ? '<button class="delx" data-act="delTheme" data-k="'+k+'" aria-label="Delete theme" '+
+        'style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);border-radius:8px">'+ic("trash",14)+'</button>' : "")+
+      '</div>';
+  };
+  return (mine.length ? '<div class="sect"><p class="lbl">Yours</p><div class="grid2">'+
+      mine.map(function(k){ return card(k, S.customThemes[k], true); }).join("")+'</div></div>' : "")+
+    '<div class="sect"><p class="lbl">Built in</p><div class="grid2">'+
+    Object.keys(THEMES).map(function(k){ return card(k, THEMES[k], false); }).join("")+'</div></div>'+
+    '<div class="sect"><p class="lbl">Timer face</p><div class="grid2">'+
+    Object.keys(FACES).map(function(k){
+      return '<button class="pill" data-act="face" data-k="'+k+'" aria-pressed="'+(S.settings.face===k)+
+        '" style="padding:11px 6px">'+FACES[k].label+'</button>';
+    }).join("")+'</div>'+
+    '<p class="note">Digital and Flip use the font and size set under Timer. Progress line and Ring replace the bar under the clock.</p></div>';
+}
+function themeMaker(){
+  const f = S.themeForm;
+  const preview = makeTheme(Object.assign({}, f, {name: f.name || "Preview"}));
+  const styles = [["radial","Glow"],["linear","Gradient"],["animated","Shifting"]].map(function(s){
+    return '<button class="pill" data-act="tfStyle" data-k="'+s[0]+'" aria-pressed="'+(f.style===s[0])+'">'+s[1]+'</button>';
+  }).join("");
+  return '<div class="sect"><div class="previewSw'+(preview.animated?" animated-gradient":"")+
+    '" style="background:'+preview.bg+';color:'+preview.text+';'+(preview.animated?"background-size:300% 300%;":"")+'">'+
+    '<span style="display:flex;align-items:center;gap:10px">25:00 '+
+    '<span style="width:34px;height:10px;border-radius:99px;background:'+f.accent+'"></span></span></div></div>'+
+
+    '<div class="sect"><div class="box">'+
+    '<input class="txt" id="tfName" value="'+esc(f.name)+'" placeholder="Name your theme" style="margin-bottom:11px">'+
+    '<div class="row"><span style="font-size:13px">Deep colour</span><input type="color" value="'+f.a+'" data-act="tfA"></div>'+
+    '<div class="row"><span style="font-size:13px">Light colour</span><input type="color" value="'+f.b+'" data-act="tfB"></div>'+
+    '<div class="row"><span style="font-size:13px">Accent (buttons, progress)</span><input type="color" value="'+f.accent+'" data-act="tfAccent"></div>'+
+    '<div class="row" style="margin-top:12px"><span class="sp" style="font-size:13px">Text</span>'+
+    '<button class="pill" data-act="tfLight" aria-pressed="'+f.light+'" style="min-width:94px">'+(f.light?"Light on dark":"Dark on light")+'</button></div>'+
+    '<p class="lbl" style="margin:14px 0 8px">Blend</p><div class="grid3">'+styles+'</div>'+
+    '<button class="solid" data-act="tfSave" style="width:100%;margin-top:13px">Save to my themes</button>'+
+    '</div><p class="note">Saved themes sit at the top of the Theme packs tab and work with every face and background.</p></div>';
+}
+function sceneView(){
+  const thumbs = Object.keys(SCENES).map(function(k){
+    return '<button class="scenebtn" data-act="scene" data-k="'+k+'" aria-pressed="'+(S.scene===k)+'">'+
+      '<span class="thumb" style="display:block;background:'+sceneThumb(k)+'"></span>'+
+      '<span class="nm" style="display:block">'+SCENES[k].label+'</span></button>';
+  }).join("");
+  return '<div class="sect"><p class="lbl">Drawn scenes</p><div class="grid2">'+thumbs+'</div>'+
+    '<p class="note">These are drawn in the browser with SVG and CSS — no images are downloaded, so they load instantly and work offline.</p></div>'+
+    '<div class="sect"><p class="lbl">Your own picture</p><div class="box">'+
+    '<input type="file" accept="image/*" id="bgFile" style="width:100%;font-size:12px">'+
+    (S.bgImage ? '<button class="ghost" data-act="clearBg" style="width:100%;margin-top:10px">Remove my picture</button>' : "")+
+    '<p class="note">Picked from your device and stored in this browser — it is never uploaded anywhere. Large photos get scaled down to keep the app quick. Use a picture you own or that is licensed for your use.</p>'+
+    '</div></div>';
+}
+function sceneThumb(k){
+  return ({
+    none:"linear-gradient(135deg,#2a2a33,#15151c)",
+    sakura:"radial-gradient(circle at 30% 20%,#ffd9e8,#ff9ec4 40%,#7b3f61)",
+    rain:"linear-gradient(180deg,#1b2a3f,#0a1220)",
+    dusk:"linear-gradient(180deg,#ffb36b 0%,#c2577a 45%,#2a1c3d 100%)",
+    stars:"linear-gradient(180deg,#070b1e,#131a3a)",
+    aurora:"linear-gradient(140deg,#5eead4,#a78bfa 50%,#0b1026)",
+    meadow:"linear-gradient(180deg,#132a22,#06120e)"
+  })[k] || "#222";
+}
+
+/* ============================ picture-in-picture ============================
+   Prefers the always-on-top Document PiP window (Chrome/Edge). If the browser or the
+   hosting frame won't allow it, falls back to a small popup window. The floating window
+   runs its own 500ms clock so it keeps ticking while this tab is in the background. */
+let pipDoc = null, pipWin = null, pipTimer = null, pipSig = "";
+function pipCss(){
+  const th = theme();
+  return "*{box-sizing:border-box;margin:0}html,body{height:100%}"+
+    "body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vmin;padding:8px;"+
+    "background:"+th.solid+";color:"+th.text+";font-family:"+FONTS[S.settings.font].family+
+    ";-webkit-font-smoothing:antialiased;overflow:hidden;user-select:none}"+
+    "#t{font-size:min(24vw,38vh);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:"+S.settings.spacing+"em;white-space:nowrap}"+
+    "#l{font-size:max(10px,min(4.2vw,8vh));letter-spacing:.16em;text-transform:uppercase;opacity:.65;text-align:center}"+
+    "#r{display:flex;gap:8px;align-items:center}"+
+    "button{border:0;border-radius:999px;padding:7px 20px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;background:"+th.accent+";color:"+th.onAccent+"}"+
+    "button.g{background:rgba(255,255,255,.16);color:"+th.text+";padding:7px 13px}"+
+    "button:focus-visible{outline:2px solid "+th.text+";outline-offset:2px}";
+}
+function paintPip(){
+  if(!pipDoc || !pipWin || pipWin.closed) return;
+  try{
+    const t = pipDoc.getElementById("t"), l = pipDoc.getElementById("l"), b = pipDoc.getElementById("b");
+    if(!t) return;
+    const sig = S.theme+"|"+S.settings.font+"|"+S.settings.spacing;      // restyle if theme/font changed
+    if(sig !== pipSig){ pipSig = sig; pipDoc.getElementById("pipcss").textContent = pipCss(); }
+    t.textContent = T.mode === "stopwatch" ? fmt(elapsedSw()) : fmt(leftNow());
+    l.textContent = phaseLabel();
+    b.textContent = T.running ? "Pause" : (T.mode !== "stopwatch" && leftNow() >= totalMs() ? "Start" : "Resume");
+    pipDoc.title = (T.running ? t.textContent+" · " : "")+phaseLabel();
+  }catch(e){ closePip(); }
+}
+function closePip(){
+  if(pipTimer){ clearInterval(pipTimer); pipTimer = null; }
+  const w = pipWin; pipWin = null; pipDoc = null; pipSig = "";
+  try{ if(w && !w.closed) w.close(); }catch(e){}
+  $("#btnPip").setAttribute("aria-pressed","false");
+}
+async function openPipWindow(){
+  if(window.documentPictureInPicture){
+    try{ return await window.documentPictureInPicture.requestWindow({width:290,height:190}); }catch(e){ /* blocked in this frame — try a popup */ }
+  }
+  const w = window.open("", "focusstudyTimer", "popup=yes,width=290,height=190");
+  if(!w) return null;
+  try{ void w.document.body; }catch(e){ try{ w.close(); }catch(_){} return null; }
+  return w;
+}
+/* Video picture-in-picture. Inside the claude.ai frame the browser refuses both the
+   Document PiP window and pop-ups, but it does allow a <video> to float. So the timer is
+   drawn onto a canvas, streamed into a muted video, and that video goes PiP. The PiP
+   window's play/pause and next-track buttons drive the timer through Media Session.
+   A worker keeps redrawing it while this tab is in the background (plain timers there
+   get slowed to once a minute). */
+let vpip = null;   // {cv, g, video, worker, timer}
+function vpipInit(){
+  if(vpip) return vpip;
+  const cv = document.createElement("canvas"); cv.width = 480; cv.height = 270;
+  if(!cv.captureStream) return null;
+  const video = document.createElement("video");
+  video.muted = true; video.playsInline = true; video.autoplay = true;
+  video.setAttribute("aria-hidden","true");
+  video.style.cssText = "position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none";
+  video.srcObject = cv.captureStream(4);
+  document.body.appendChild(video);
+  vpip = {cv:cv, g:cv.getContext("2d"), video:video, worker:null, timer:null};
+  vpipDraw();
+  video.play().catch(function(){});
+  video.addEventListener("leavepictureinpicture", function(){ vpipStopTicking(); $("#btnPip").setAttribute("aria-pressed","false"); });
+  return vpip;
+}
+function vpipDraw(){
+  if(!vpip) return;
+  const th = theme(), g = vpip.g, W = vpip.cv.width, H = vpip.cv.height;
+  const val = T.mode === "stopwatch" ? fmt(elapsedSw()) : fmt(leftNow());
+  const tot = totalMs();
+  const pct = T.mode === "stopwatch" ? 0 : (tot ? Math.max(0, Math.min(1, 1 - leftNow()/tot)) : 0);
+  g.fillStyle = th.solid; g.fillRect(0, 0, W, H);
+  g.fillStyle = th.text; g.textAlign = "center"; g.textBaseline = "middle";
+  const fam = (FONTS[S.settings.font] || FONTS.sans).family;
+  g.font = "800 "+(val.length > 5 ? 92 : 118)+"px "+fam;
+  g.fillText(val, W/2, H/2 - 10);
+  g.globalAlpha = .7; g.font = "600 20px "+fam;
+  g.fillText((phaseLabel() + (T.running ? "" : " · paused")).toUpperCase(), W/2, H/2 + 72);
+  g.globalAlpha = .18; g.fillRect(40, H - 26, W - 80, 6);
+  g.globalAlpha = 1; g.fillStyle = th.accent; g.fillRect(40, H - 26, (W - 80)*pct, 6);
+  if("mediaSession" in navigator){
+    try{ navigator.mediaSession.playbackState = T.running ? "playing" : "paused"; }catch(e){}
+  }
+}
+function vpipStartTicking(){
+  vpipStopTicking();
+  try{
+    const src = "setInterval(function(){postMessage(0)},500)";
+    vpip.worker = new Worker(URL.createObjectURL(new Blob([src], {type:"text/javascript"})));
+    vpip.worker.onmessage = vpipDraw;
+  }catch(e){ vpip.worker = null; }
+  if(!vpip.worker) vpip.timer = setInterval(vpipDraw, 500);
+}
+function vpipStopTicking(){
+  if(!vpip) return;
+  if(vpip.worker){ vpip.worker.terminate(); vpip.worker = null; }
+  if(vpip.timer){ clearInterval(vpip.timer); vpip.timer = null; }
+}
+function vpipMediaKeys(){
+  if(!("mediaSession" in navigator)) return;
+  const set = function(a, fn){ try{ navigator.mediaSession.setActionHandler(a, fn); }catch(e){} };
+  set("play", function(){ start(); vpipDraw(); });
+  set("pause", function(){ pause(); vpipDraw(); });
+  set("nexttrack", function(){ skip(); vpipDraw(); });
+  try{ navigator.mediaSession.metadata = new MediaMetadata({title:"Focus Study", artist:phaseLabel()}); }catch(e){}
+}
+async function openVideoPip(){
+  const v = vpipInit();
+  if(!v || !document.pictureInPictureEnabled) return false;
+  vpipDraw();
+  try{ await v.video.play(); }catch(e){}
+  await v.video.requestPictureInPicture();
+  vpipMediaKeys();
+  vpipStartTicking();
+  $("#btnPip").setAttribute("aria-pressed","true");
+  return true;
+}
+function inFrame(){ try{ return window.self !== window.top; }catch(e){ return true; } }
+
+async function togglePip(){
+  if(pipWin){ closePip(); return; }
+  if(document.pictureInPictureElement){
+    try{ await document.exitPictureInPicture(); }catch(e){}
+    vpipStopTicking(); $("#btnPip").setAttribute("aria-pressed","false"); return;
+  }
+  // Framed (like on claude.ai): the video route is the one the browser allows, so go
+  // straight to it while the click still counts as a user gesture.
+  if(inFrame() || !window.documentPictureInPicture){
+    try{ if(await openVideoPip()) return; }catch(e){}
+  }
+  try{
+    const w = await openPipWindow();
+    if(!w){
+      try{ if(await openVideoPip()) return; }catch(e){}
+      toast("Your browser won't float the timer from this page. Chrome, Edge and Safari support it.", 4000);
+      return;
+    }
+    pipWin = w; pipDoc = w.document;
+    pipDoc.head.innerHTML = '<meta charset="utf-8"><title>Focus Study</title>';
+    // the floating window starts empty, so bring the web fonts across or it would fall back to a system font
+    Array.prototype.forEach.call(document.querySelectorAll('link[rel="stylesheet"]'), function(l){
+      pipDoc.head.appendChild(l.cloneNode(true));
+    });
+    const st = pipDoc.createElement("style"); st.id = "pipcss"; pipDoc.head.appendChild(st);
+    pipDoc.body.innerHTML = '<div id="t">00:00</div><div id="l"></div>'+
+      '<div id="r"><button id="b">Start</button><button id="k" class="g" title="Skip" aria-label="Skip">Skip</button></div>';
+    pipDoc.getElementById("b").addEventListener("click", function(){ toggle(); paintPip(); });
+    pipDoc.getElementById("k").addEventListener("click", function(){ skip(); paintPip(); });
+    pipDoc.addEventListener("keydown", function(e){
+      if(e.code === "Space"){ e.preventDefault(); toggle(); paintPip(); }
+    });
+    w.addEventListener("pagehide", function(){
+      if(pipWin === w){ if(pipTimer){ clearInterval(pipTimer); pipTimer = null; } pipWin = null; pipDoc = null; pipSig = "";
+        $("#btnPip").setAttribute("aria-pressed","false"); }
+    });
+    pipTimer = setInterval(paintPip, 500);    // main-tab timers get throttled in the background; this one doesn't
+    $("#btnPip").setAttribute("aria-pressed","true");
+    paintPip();
+  }catch(e){
+    closePip();
+    toast("Couldn't open the floating timer here.", 3000);
+  }
+}
+window.addEventListener("beforeunload", function(){ try{ if(pipWin) pipWin.close(); }catch(e){} });
+
+/* ============================ events ============================ */
+$("#brandIcon").innerHTML = ic("flame",19,"currentColor");
+$("#btnReset").innerHTML = ic("reset",19);
+$("#btnSkip").innerHTML = ic("skip",19);
+$("#btnPip").innerHTML = ic("pip",19);
+$("#btnShield").innerHTML = ic("shield",19);
+$("#panelClose").innerHTML = ic("x",17);
+document.querySelectorAll(".dockbtn[data-panel]").forEach(function(b){
+  const m = {tasks:"list",routines:"repeat",music:"music",timer:"clock",stats:"chart",
+    sounds:"vol",themes:"palette",account:"user"};
+  b.innerHTML = ic(m[b.dataset.panel],18);
+  b.addEventListener("click", function(){ togglePanel(b.dataset.panel); });
+});
+
+$("#btnGo").addEventListener("click", toggle);
+$("#btnReset").addEventListener("click", function(){ resetToPhase(); toast("Reset"); });
+$("#btnSkip").addEventListener("click", skip);
+$("#btnPip").addEventListener("click", togglePip);
+$("#btnShield").addEventListener("click", toggleShield);
+$("#shieldOff").addEventListener("click", toggleShield);
+$("#shieldResume").addEventListener("click", start);
+$("#taskChip").addEventListener("click", function(){ openPanel("tasks"); });
+$("#panelClose").addEventListener("click", closePanel);
+$("#phaseTabs").addEventListener("click", function(e){
+  const b = e.target.closest("button[data-phase]"); if(b) setPhase(b.dataset.phase);
+});
+
+document.addEventListener("keydown", function(e){
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName||""));
+  if(typing) return;
+  if(e.code === "Space"){ e.preventDefault(); toggle(); }
+  else if(e.key === "r" || e.key === "R"){ resetToPhase(); }
+  else if(e.key === "s" || e.key === "S"){ skip(); }
+  else if(e.key === "Escape" && panelName){ closePanel(); }
+});
+
+/* one delegated handler for everything inside the panel */
+$("#panelBody").addEventListener("click", function(e){
+  const el = e.target.closest("[data-act]"); if(!el) return;
+  const act = el.dataset.act, k = el.dataset.k, id = el.dataset.id;
+
+  if(act === "addTask"){
+    const name = ($("#taskName").value||"").trim();
+    if(!name) return;
+    const est = Math.max(1, Math.min(30, parseInt($("#taskEst").value,10)||1));
+    const t = {id:"t"+Date.now(), name:name, estimate:est, pomos:0, done:false};
+    S.tasks.push(t);
+    if(!S.activeTaskId) S.activeTaskId = t.id;
+    render();
+  }
+  else if(act === "doneTask"){
+    S.tasks.forEach(function(t){ if(t.id===id) t.done = !t.done; }); render();
+  }
+  else if(act === "pickTask"){ S.activeTaskId = S.activeTaskId === id ? null : id; render(); }
+  else if(act === "delTask"){
+    S.tasks = S.tasks.filter(function(t){ return t.id !== id; });
+    if(S.activeTaskId === id) S.activeTaskId = null;
+    render();
+  }
+  else if(act === "runRoutine"){
+    const r = S.routines.filter(function(x){ return x.id===id; })[0]; if(!r) return;
+    if(r.mode === "plan"){
+      const total = r.planTotal || 100;
+      const ro = {blocks:r.planBlocks||0, longAt:r.planLongAt===undefined?"auto":r.planLongAt};
+      S.plan = {steps:buildPlan(total, r.planBreaks !== false, !!r.planEven, ro) || buildPlan(total, r.planBreaks !== false, !!r.planEven), index:0,
+        total:total, includeBreaks:r.planBreaks !== false, even:!!r.planEven, blocks:ro.blocks, longAt:ro.longAt};
+      S.planForm.h = Math.floor(total/60); S.planForm.m = total%60;
+      startPlan(); closePanel(); start(); toast(r.name+" started"); return;
+    }
+    if(r.mode === "custom") S.settings.custom = r.custom || 30;
+    else if(r.mode === "animedoro"){ S.settings.animeWork = r.work||40; S.settings.animeBreak = r.short||20; }
+    else if(r.mode === "pomodoro"){
+      S.settings.work = r.work||25; S.settings.short = r.short||5;
+      S.settings.long = r.long||15; S.settings.before = r.before||4;
+    }
+    setMode(r.mode);
+    closePanel(); start();
+    toast(r.name+" started");
+  }
+  else if(act === "saveRoutine"){
+    const nm = ($("#routineName").value||"").trim();
+    if(!nm){ toast("Give the routine a name"); return; }
+    const s = S.settings;
+    S.routines.push({id:"r"+Date.now(), name:nm, mode:T.mode, at:$("#routineAt").value||"",
+      work:T.mode==="animedoro"?s.animeWork:s.work, short:T.mode==="animedoro"?s.animeBreak:s.short,
+      long:s.long, before:s.before, custom:s.custom,
+      planTotal:S.planForm.h*60+S.planForm.m, planBreaks:S.planForm.includeBreaks, planEven:S.planForm.even,
+      planBlocks:S.planForm.blocks||0, planLongAt:S.planForm.longAt===undefined?"auto":(Array.isArray(S.planForm.longAt)?S.planForm.longAt.slice():S.planForm.longAt)});
+    render(); toast("Routine saved");
+  }
+  else if(act === "svc"){ S.music.service = k; render(); }
+  else if(act === "saveMusic"){
+    S.music.links[S.music.service] = ($("#musicLink").value||"").trim();
+    render(); watchFrame();
+    toast(embedUrl(S.music.service, S.music.links[S.music.service]) ? "Link saved" : "Saved, but that link looks off");
+  }
+  else if(act === "openMusic"){
+    const link = ($("#musicLink") && $("#musicLink").value.trim()) || S.music.links[S.music.service];
+    if(!link){ toast("Paste a link first"); return; }
+    window.open(link, "_blank", "noopener");
+  }
+  else if(act === "sound"){
+    S.settings.sound = k; S.settings.soundOn = true;
+    if(!startNoise()) { S.settings.soundOn = false; toast("Audio isn't available here"); }
+    render();
+  }
+  else if(act === "toggleSound"){
+    S.settings.soundOn = !S.settings.soundOn;
+    if(S.settings.soundOn){ if(!startNoise()){ S.settings.soundOn = false; toast("Audio isn't available here"); } }
+    else stopNoise();
+    render();
+  }
+  else if(act === "toggleChime"){ S.settings.chime = !S.settings.chime; render(); }
+  else if(act === "autoBreaks"){
+    S.settings.autoBreaks = !S.settings.autoBreaks;
+    if(!T.running && T.mode !== "plan") T.leftMs = totalMs();
+    if(T.mode === "plan") autoRebuild();
+    render();
+  }
+  else if(act === "toggleAuto"){ S.settings.autoStart = !S.settings.autoStart; render(); }
+  else if(act === "mode"){ setMode(k); }
+  else if(act === "planPreset"){
+    S.planForm.h = parseInt(el.dataset.h,10); S.planForm.m = parseInt(el.dataset.m,10);
+    planFormChanged();
+  }
+  else if(act === "planBreaks"){ S.planForm.includeBreaks = !S.planForm.includeBreaks; planFormChanged(); }
+  else if(act === "longMode"){
+    if(k === "custom"){
+      // start Custom from what Auto would do, so the picks make sense straight away
+      if(!longList(S.planForm.longAt)){
+        const f = S.planForm, ap = buildPlan(Math.max(5, f.h*60+f.m), f.includeBreaks, f.even, {blocks:f.blocks, longAt:"auto"});
+        const spots = []; let c = 0;
+        (ap||[]).forEach(function(x){ if(x.type === "focus") c++; else if(x.type === "long") spots.push(c); });
+        S.planForm.longAt = spots;
+      }
+    } else S.planForm.longAt = k;
+    planFormChanged();
+  }
+  else if(act === "longAfter"){
+    const n = el.dataset.n === "end" ? "end" : parseInt(el.dataset.n,10), cur = (longList(S.planForm.longAt) || []).slice();
+    const i = cur.indexOf(n);
+    if(i >= 0) cur.splice(i,1); else cur.push(n);
+    S.planForm.longAt = sortPicks(cur);
+    planFormChanged();
+  }
+  else if(act === "planEven"){ S.planForm.even = !S.planForm.even; planFormChanged(); }
+  else if(act === "planBuild"){
+    const f = S.planForm, total = f.h*60 + f.m;
+    if(total < 5){ toast("Give it at least 5 minutes"); return; }
+    const steps = buildPlan(total, f.includeBreaks, f.even, {blocks:f.blocks, longAt:f.longAt});
+    if(!steps){ toast("That many blocks won't fit — try fewer blocks or more time"); return; }
+    S.plan = {steps:steps, index:0, total:total, includeBreaks:f.includeBreaks, even:f.even, blocks:f.blocks, longAt:f.longAt};
+    const focusMin = steps.reduce(function(a,x){ return a + (x.type==="focus"?x.min:0); }, 0);
+    if(T.mode !== "plan") setMode("plan"); else { T.running = false; releaseWakeLock(); T.phase = steps[0].type; T.leftMs = totalMs(); }
+    render();
+    toast(planBlockTotal()+" blocks · "+focusMin+" min of focus");
+  }
+  else if(act === "planStart"){
+    if(!planSteps().length) return;
+    startPlan(); closePanel(); start();
+  }
+  else if(act === "planClear"){
+    S.plan = null; T.leftMs = totalMs(); render(); toast("Plan cleared");
+  }
+  else if(act === "font"){ S.settings.font = k; applyFont(); buildFace(); render(); }
+  else if(act === "theme"){
+    S.theme = k;
+    const th = allThemes()[k];
+    if(th && th.form) S.themeForm = Object.assign({}, th.form);
+    applyScene(true); render();
+  }
+  else if(act === "themeTab"){ themeTab = k; renderPanel(); }
+  else if(act === "face"){ S.settings.face = k; buildFace(); render(); }
+  else if(act === "tfStyle"){ S.themeForm.style = k; renderPanel(); save(); }
+  else if(act === "tfLight"){ S.themeForm.light = !S.themeForm.light; renderPanel(); save(); }
+  else if(act === "tfSave"){
+    const nameEl = document.getElementById("tfName");
+    const nm = ((nameEl && nameEl.value) || "").trim();
+    if(!nm){ toast("Give your theme a name"); return; }
+    S.themeForm.name = nm;
+    const id = "my_"+nm.toLowerCase().replace(/[^a-z0-9]+/g,"_").slice(0,24)+"_"+Date.now().toString(36).slice(-4);
+    S.customThemes[id] = makeTheme(S.themeForm);
+    S.theme = id;
+    themeTab = "packs";
+    applyScene(true); render();
+    toast('"'+nm+'" saved to your themes');
+  }
+  else if(act === "delTheme"){
+    const wasActive = S.theme === k;
+    delete S.customThemes[k];
+    if(wasActive) S.theme = "auraTwilight";
+    applyScene(true); render(); toast("Theme deleted");
+  }
+  else if(act === "scene"){ S.scene = k; applyScene(true); render(); }
+  else if(act === "clearBg"){ S.bgImage = null; applyScene(true); render(); toast("Picture removed"); }
+  else if(act === "range"){ statRange = parseInt(k,10); renderPanel(); }
+  else if(act === "exportData"){ exportData(); }
+  else if(act === "sbSave"){
+    const url = ($("#sbUrl").value||"").trim().replace(/\/+$/,"");
+    const key = ($("#sbKey").value||"").trim();
+    if(!/^https:\/\/.+\..+/.test(url)){ toast("That doesn't look like a project URL"); return; }
+    if(key.length < 30){ toast("That anon key looks too short"); return; }
+    try{ localStorage.setItem(CLOUD_KEY, JSON.stringify({url:url, anonKey:key})); }
+    catch(e){ toast("Couldn't save those settings"); return; }
+    cloudErr = null;
+    initCloud().then(function(){ renderPanel(); });
+    toast("Connected. Sign up or log in below.");
+  }
+  else if(act === "sbForget"){
+    try{ localStorage.removeItem(CLOUD_KEY); }catch(e){}
+    sb = null; me = null; cloudErr = null; renderPanel();
+    toast("Project disconnected");
+  }
+  else if(act === "showSql"){
+    const box = document.getElementById("sqlBox"); if(!box) return;
+    box.hidden = false;
+    box.innerHTML = '<textarea class="txt" id="sqlText" rows="9" readonly '+
+      'style="font-family:\'DM Mono\',monospace;font-size:10.5px;resize:vertical">'+esc(SETUP_SQL)+'</textarea>'+
+      '<button class="solid" id="sqlCopy" style="width:100%;margin-top:8px">Copy the SQL</button>';
+    document.getElementById("sqlCopy").addEventListener("click", function(){
+      const ta = document.getElementById("sqlText");
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(SETUP_SQL).then(function(){ toast("Copied"); })
+          .catch(function(){ ta.select(); toast("Selected — press Ctrl/Cmd+C"); });
+      } else { ta.select(); toast("Selected — press Ctrl/Cmd+C"); }
+    });
+  }
+  else if(act === "login" || act === "signup"){
+    const email = ($("#authEmail").value||"").trim();
+    const pass = $("#authPass").value||"";
+    if(!email || !pass){ toast("Email and password, please"); return; }
+    if(act === "signup" && pass.length < 6){ toast("Use at least 6 characters"); return; }
+    el.disabled = true; cloudErr = null;
+    (act === "login" ? signIn(email, pass) : signUp(email, pass))
+      .then(function(){ renderAccountIfOpen(); })
+      .catch(function(err){ cloudErr = friendlyAuthError(err); renderPanel(); });
+  }
+  else if(act === "forgot"){
+    const email = ($("#authEmail").value||"").trim();
+    if(!email){ toast("Put your email in the box first"); return; }
+    resetPassword(email).catch(function(err){ cloudErr = friendlyAuthError(err); renderPanel(); });
+  }
+  else if(act === "logout"){ signOutNow(); }
+  else if(act === "syncNow"){ syncAll(false); }
+  else if(act === "wipeCloud"){ wipeCloud(); }
+});
+
+$("#panelBody").addEventListener("input", function(e){
+  const el = e.target.closest("[data-act]"); if(!el) return;
+  const act = el.dataset.act;
+  if(act === "volume"){
+    S.settings.volume = parseFloat(el.value);
+    if(gainNode && actx) try{ gainNode.gain.setTargetAtTime(S.settings.volume, actx.currentTime, .05); }catch(e2){}
+    save();
+  }
+  else if(act === "size"){ S.settings.size = parseInt(el.value,10); applyFont(); buildFace(); paint();
+    el.closest(".box").querySelectorAll(".mini")[1].textContent = S.settings.size+"px"; save(); }
+  else if(act === "spacing"){ S.settings.spacing = parseFloat(el.value); applyFont(); buildFace(); paint();
+    el.closest(".box").querySelectorAll(".mini")[3].textContent = S.settings.spacing.toFixed(2)+"em"; save(); }
+  else if(act === "num"){
+    const v = Math.max(1, Math.min(240, parseInt(el.value,10)||1));
+    S.settings[el.dataset.k] = v;
+    if(!T.running) T.leftMs = totalMs();
+    paint(); save();
+  }
+  else if(act === "goal"){ S.settings.goal = Math.max(10, parseInt(el.value,10)||120); save(); }
+  else if(act === "tfA"){ S.themeForm.a = el.value; renderPanel(); save(); }
+  else if(act === "tfB"){ S.themeForm.b = el.value; renderPanel(); save(); }
+  else if(act === "tfAccent"){ S.themeForm.accent = el.value; renderPanel(); save(); }
+  else if(act === "planH"){ S.planForm.h = Math.max(0, Math.min(12, parseInt(el.value,10)||0)); save(); }
+  else if(act === "planM"){ S.planForm.m = Math.max(0, Math.min(59, parseInt(el.value,10)||0)); save(); }
+  else if(act === "planBlocks"){
+    // update state as they type; redraw the hint + long-break choices once they leave the field
+    S.planForm.blocks = Math.max(0, Math.min(12, parseInt(el.value,10)||0));
+    save();
+  }
+  else if(act === "planLongAt"){
+    const v = el.value; S.planForm.longAt = (v === "auto" || v === "none") ? v : parseInt(v,10);
+    renderPanel(); save();
+  }
+});
+$("#panelBody").addEventListener("keydown", function(e){
+  if(e.key !== "Enter") return;
+  if(e.target.id === "taskName"){ e.preventDefault(); $("#panelBody").querySelector('[data-act="addTask"]').click(); }
+  if(e.target.id === "musicLink"){ e.preventDefault(); $("#panelBody").querySelector('[data-act="saveMusic"]').click(); }
+  if(e.target.id === "authPass" || e.target.id === "authEmail"){
+    e.preventDefault();
+    const b = $("#panelBody").querySelector('[data-act="login"]'); if(b) b.click();
+  }
+});
+
+/* Background picture: scaled down on a canvas before it is stored, so a 4MB
+   phone photo doesn't blow the browser's storage budget. */
+$("#panelBody").addEventListener("change", function(e){
+  if(e.target.dataset && (e.target.dataset.act === "planBlocks" || e.target.dataset.act === "planH" || e.target.dataset.act === "planM")){ planFormChanged(); return; }
+  if(e.target.dataset && e.target.dataset.act === "num"){ renderPanel(); return; }
+  if(e.target.id !== "bgFile") return;
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  if(!/^image\//.test(file.type)){ toast("That isn't an image file"); return; }
+  const reader = new FileReader();
+  reader.onload = function(){
+    const im = new Image();
+    im.onload = function(){
+      try{
+        const max = 1600;
+        const scale = Math.min(1, max/Math.max(im.width, im.height));
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(im.width*scale); cv.height = Math.round(im.height*scale);
+        cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+        S.bgImage = cv.toDataURL("image/jpeg", 0.82);
+        if(S.scene === "none" && !SCENES[S.scene]) S.scene = "none";
+        applyScene(true); render();
+        try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); toast("Background set"); }
+        catch(err){
+          S.bgImage = null; applyScene(true); render();
+          toast("That image is too large for this browser's storage. Try a smaller one.", 4000);
+        }
+      }catch(err){ toast("Couldn't read that image"); }
+    };
+    im.onerror = function(){ toast("Couldn't read that image"); };
+    im.src = reader.result;
+  };
+  reader.onerror = function(){ toast("Couldn't read that file"); };
+  reader.readAsDataURL(file);
+});
+
+/* If the sandbox refuses the embed, no load event ever fires — swap in the
+   open-in-a-new-tab card instead of leaving a dead black box. */
+let frameTimer = null;
+function watchFrame(){
+  clearTimeout(frameTimer);
+  const f = document.getElementById("musicFrame");
+  if(!f) return;
+  let ok = false;
+  f.addEventListener("load", function(){ ok = true; });
+  frameTimer = setTimeout(function(){
+    if(ok) return;
+    const wrap = document.getElementById("frameWrap"), fb = document.getElementById("frameFallback");
+    if(wrap && fb){ wrap.hidden = true; fb.hidden = false; }
+  }, 2800);
+}
+
+/* Saving a file is blocked inside the artifact frame, so the export shows the
+   JSON for you to copy instead of handing you a dead download link. */
+function exportData(){
+  const box = document.getElementById("exportBox"); if(!box) return;
+  const json = JSON.stringify(S, null, 2);
+  box.hidden = false;
+  box.innerHTML = '<textarea class="txt" id="exportText" rows="7" readonly '+
+    'style="font-family:\'DM Mono\',monospace;font-size:11px;resize:vertical">'+esc(json)+'</textarea>'+
+    '<button class="solid" id="exportCopy" style="width:100%;margin-top:8px">Copy to clipboard</button>';
+  const ta = document.getElementById("exportText");
+  document.getElementById("exportCopy").addEventListener("click", function(){
+    const done = function(){ toast("Copied"); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(json).then(done).catch(function(){ ta.select(); toast("Selected — press Ctrl/Cmd+C"); });
+    } else { ta.select(); toast("Selected — press Ctrl/Cmd+C"); }
+  });
+}
+
+window.addEventListener("beforeunload", function(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){} });
+
+/* ============================ boot ============================ */
+T.leftMs = totalMs();
+if(T.mode === "plan") autoRebuild();      // a saved plan that hasn't started picks up the current settings
+vpipInit();                                // ready ahead of time: PiP needs the video loaded when you click
+nextQuote();
+render();
+initCloud();
+window.addEventListener("online", function(){ if(me) syncAll(true); });
+</script>
+
+</body></html>
