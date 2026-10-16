@@ -388,6 +388,7 @@ const SOUNDS = {
 const SERVICES = {
   spotify:{label:"Spotify",hint:"open.spotify.com/playlist/…"},
   youtube:{label:"YouTube",hint:"youtube.com/playlist?list=… or a video link"},
+  ytmusic:{label:"YouTube Music",hint:"music.youtube.com/playlist?list=… or a song link"},
   apple:{label:"Apple Music",hint:"music.apple.com/…/playlist/…"}
 };
 const MODES = {
@@ -422,7 +423,7 @@ const DEFAULTS = {
   customThemes:{},
   bgImage:null,
   themeForm:{name:"",a:"#2b1b4d",b:"#8b5cf6",style:"radial",accent:"#f0abfc",light:true},
-  music:{service:"spotify",links:{spotify:"",youtube:"",apple:""}},
+  music:{service:"spotify",links:{spotify:"",youtube:"",ytmusic:"",apple:""}},
   tasks:[], sessions:[], routines:DEFAULT_ROUTINES.slice(),
   activeTaskId:null, cycles:0,
   plan:null,              // {steps:[{type,min}], index, total, includeBreaks, even}
@@ -1458,7 +1459,7 @@ function embedUrl(service, raw){
         url.match(/open\.spotify\.com\/(?:embed\/)?(?:intl-[a-z]{2}\/)?(?:user\/[^\/]+\/)?(playlist|album|track|artist|show|episode)\/([A-Za-z0-9]+)/);
     return m ? "https://open.spotify.com/embed/"+m[1]+"/"+m[2] : null;
   }
-  if(service === "youtube"){
+  if(service === "youtube" || service === "ytmusic"){
     // Playlist ids that start with RD/UL are auto-generated mixes: they can't be embedded as a
     // series, so for those we fall back to the single video in the link.
     const base = "https://www.youtube-nocookie.com/embed/";
@@ -1877,7 +1878,7 @@ function viewMusic(){
     return '<button class="pill" data-act="svc" data-k="'+k+'" aria-pressed="'+(svc===k)+'">'+SERVICES[k].label+'</button>';
   }).join("");
   const player = emb
-    ? '<div class="frame" id="frameWrap"><iframe id="musicFrame" src="'+esc(emb)+'" height="'+(svc==="youtube"?200:(svc==="apple"?(/\/(playlist|album)\//.test(emb)?450:175):152))+
+    ? '<div class="frame" id="frameWrap"><iframe id="musicFrame" src="'+esc(emb)+'" height="'+(svc==="youtube"||svc==="ytmusic"?200:(svc==="apple"?(/\/(playlist|album)\//.test(emb)?450:175):152))+
       '" allow="autoplay *; encrypted-media *; clipboard-write; picture-in-picture" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen title="'+SERVICES[svc].label+' player"></iframe></div>'+
       '<div id="frameFallback" hidden><div class="box"><p style="margin:0 0 9px;font-size:13px">Embedded players are blocked in this preview frame.</p>'+
       '<button class="solid" data-act="openMusic" style="width:100%">Open in '+SERVICES[svc].label+' '+ic("out",14)+'</button></div></div>'
@@ -1885,7 +1886,7 @@ function viewMusic(){
         ? '<p class="note">That is a private <b>library</b> link, which only works for you and can\'t be embedded. In Apple Music open the playlist, tap the ••• menu, choose <b>Share</b> then <b>Copy Link</b>. The shared link looks like music.apple.com/za/playlist/name/pl.… (the playlist must be shared or shown on your profile).</p>'
         : '<p class="note">That link doesn\'t look like a '+SERVICES[svc].label+' playlist, album or track. Expected: '+esc(SERVICES[svc].hint)+'</p>') : "");
 
-  return '<div class="sect"><p class="lbl">Service</p><div class="grid3">'+picker+'</div></div>'+
+  return '<div class="sect"><p class="lbl">Service</p><div class="grid3" style="grid-template-columns:repeat(2,1fr)">'+picker+'</div></div>'+
     '<div class="sect"><p class="lbl">'+SERVICES[svc].label+' link</p><div class="box">'+
     '<input class="txt" id="musicLink" value="'+esc(link)+'" placeholder="'+esc(SERVICES[svc].hint)+'">'+
     '<div class="row" style="margin-top:9px">'+
