@@ -1893,6 +1893,7 @@ function viewMusic(){
     '<button class="solid" data-act="saveMusic" style="flex:1">Load</button>'+
     '<button class="ghost" data-act="openMusic">Open '+ic("out",13)+'</button></div></div></div>'+
     (player ? '<div class="sect">'+player+'</div>' : "")+
+    ((player && (svc==="youtube"||svc==="ytmusic")) ? '<p class="note">If the player says <b>"This video is unavailable"</b>, the song\'s owner has switched off embedding (common for music-label tracks). Press <b>Open</b> to play it on YouTube instead.</p>' : "")+
     '<p class="note">Each service keeps its own saved link, so you can switch without re-pasting. Playback is controlled in the player itself — this app never pauses your music, only the timer.</p>';
 }
 
